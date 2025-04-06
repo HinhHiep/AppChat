@@ -7,18 +7,19 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "@/redux/slices/UserSlice";
 
-const SignUpInfoScreen = () => {
+const SignUpInfoScreen = ({route}) => {
+  const {email} = route.params;
   const navigation = useNavigation();
-  const route = navigation.getState().routes;
-  const phoneNumber = route[route.length - 1].params.phoneNumber;
+ // const route = navigation.getState().routes;
+ // const phoneNumber = route[route.length - 1].params.phoneNumber;
   const [name, setName] = useState("");
   const [birth, setBirth] = useState("");
-  const [email, setEmail] = useState("");
+  const [phoneNumber, setSDT] = useState("");
   const [password, setPassword] = useState("");
   const [rePassword, setRePassword] = useState("");
-  const dispatch = useDispatch();
-  const { userNew } = useSelector((state) => state.user || {});
-  console.log('userNew', userNew);
+  // const dispatch = useDispatch();
+  // const { userNew } = useSelector((state) => state.user || {});
+  // console.log('userNew', userNew);
 
   // console.log(phoneNumber);
   const handleSignUp = ({ name, birth, email, password }) => {
@@ -86,10 +87,10 @@ const SignUpInfoScreen = () => {
         value={birth}
       />
       <InputDefault 
-        placeholder="Email" 
+        placeholder="phoneNumber" 
         iconLeft="mail" 
-        onChangeText={(text) => setEmail(text)}
-        value={email}
+        onChangeText={(text) => setSDT(text)}
+        value={phoneNumber}
       />
       <InputDefault
         placeholder="Mật khẩu"

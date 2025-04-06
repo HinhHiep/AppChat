@@ -6,6 +6,7 @@ import SignUpInfoScreen from "../screens/SignUpInfoScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ForgotPassScreen from "../screens/ForgotPassScreen";
 import ResetPassScreen from "../screens/ResetPassScreen";
+import VetifiOtp from "../screens/VetifiOtp";
 import { Provider } from 'react-redux'
 import  store  from '../redux/store'
  
@@ -25,6 +26,7 @@ export const AppLayout = () => {
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="ForgotPass" component={ForgotPassScreen} />
       <Stack.Screen name="ResetPass" component={ResetPassScreen} />
+      <Stack.Screen name = "VetifiOtp" component={VetifiOtp} />
     </Stack.Navigator>
     </Provider>
   );

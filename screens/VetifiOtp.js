@@ -1,40 +1,41 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
-import {getOTP,checkGmail} from '@/api/UserApi';
 
-const SignUpScreen = () => {
+const VetifiOtp = ({route}) => {
   const navigation = useNavigation()
-  const [email, setEmail] = useState('')
+  const {email, data} = route.params;
+  useEffect(() => {
+    console.log('Email:', email);  // In ra email
+    console.log('Data:', data);    // In ra data
+  }, [email, data]);
+  const [OTP, setOTP] = useState('')
   const handleLogin = () => {
     navigation.navigate('Login')
   }
-  const handleSignUp = async () => {
-    if (!email) {
-      alert('Vui lòng nhập email !')
+  const handleSignUp = () => {
+    if (!OTP) {
+      alert('Vui lòng nhập OTP !')
       return
     }
-    console.log((await checkGmail(email)).data.exists);
-     if ((await checkGmail(email)).data.exists) {
-      alert('Email đã tồn tại !')
+    if (OTP !== data.otp) {
+      alert('OTP không đúng !')
       return
     }
-    const data = await getOTP(email);
-    console.log(data);
-    navigation.navigate('VetifiOtp',{
-      email: email,data: data
+    navigation.navigate('SignUpInfo',{
+      email: email
     })
   }
   return (
    <LayoutDefault>
        <InputDefault 
-        placeholder="Email" 
-        iconLeft="person" 
-        onChangeText={(text) => setEmail(text)}
-        value={email}
+        placeholder="OTP" 
+        //iconLeft="person" 
+        onChangeText={(text) => setOTP(text)}
+        value={OTP}
       />
        <ButtonPrimary title="Tiếp tục" onPress={()=> handleSignUp()} />
         <Text style={styles.textBody}>
@@ -46,9 +47,7 @@ const SignUpScreen = () => {
     </LayoutDefault>
   )
 }
-
-export default SignUpScreen
-
+export default VetifiOtp
 const styles = StyleSheet.create({
   text: {
     color: '#03C7F7',

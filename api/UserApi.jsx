@@ -1,11 +1,12 @@
 // sdt, matKhau
+import axios from "axios";
 export const login = async (username, password) => {
     if (!username || !password) {
         throw new Error("Username and password are required");
     }
     console.log("Login function called with:", username, password);
   try {
-    const response = await fetch("http://localhost:5000/api/login", {
+    const response = await fetch("https://echoapp-rho.vercel.app/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -35,7 +36,7 @@ export const login = async (username, password) => {
 // sdt, name, ngaySinh, matKhau,email
 export const register = async (phoneNumber, name, birth,  password,email) => {
   try {
-    const response = await fetch("http://localhost:5000/api/registerUser", {
+    const response = await fetch("https://echoapp-rho.vercel.app/api/registerUser", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,7 +62,7 @@ export const register = async (phoneNumber, name, birth,  password,email) => {
 
 export const changePass = async (phoneNumber,newPassword) => {
     try {
-        const response = await fetch("http://localhost:5000/api/users/doimatkhau", {
+        const response = await fetch("https://echoapp-rho.vercel.app/api/users/doimatkhau", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -81,5 +82,38 @@ export const changePass = async (phoneNumber,newPassword) => {
         throw error;
     }
     }
+export const getOTP = async (email) =>{
+  try {
+    const response = await fetch("https://echoapp-rho.vercel.app/api/send-otp", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ 
+        email: email
+    }),
+    });
+    
+    if (!response.ok) {
+    throw new Error("Network response was not ok");
+    }
+    const data = await response.json();
+    return data;
+} catch (error) {
+    console.error("Error during register:", error);
+    throw error;
+}
+}
+export const checkGmail = async (email) =>{
+  const responseEmail = await axios.post('https://echoapp-rho.vercel.app/api/users/email', 
+    { email },
+    { headers: { 'Content-Type': 'application/json' } }
+  ).catch(err => {
+    throw new Error(`Lỗi kiểm tra email: ${err.message}`);
+  });
+  return responseEmail; // Trả về dữ liệu từ phản hồi
+}
+
+
 
 
