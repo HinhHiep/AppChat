@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
@@ -7,15 +7,27 @@ import { useNavigation } from '@react-navigation/native'
 
 const SignUpScreen = () => {
   const navigation = useNavigation()
+  const [phoneNumber, setPhoneNumber] = useState('')
   const handleLogin = () => {
     navigation.navigate('Login')
   }
   const handleSignUp = () => {
-    navigation.navigate('SignUpInfo')
+    if (!phoneNumber) {
+      alert('Vui lòng nhập số điện thoại !')
+      return
+    }
+    navigation.navigate('SignUpInfo',{
+      phoneNumber: phoneNumber,
+    })
   }
   return (
    <LayoutDefault>
-       <InputDefault placeholder="Số điện thoại" iconLeft="person" />
+       <InputDefault 
+        placeholder="Số điện thoại" 
+        iconLeft="person" 
+        onChangeText={(text) => setPhoneNumber(text)}
+        value={phoneNumber}
+      />
        <ButtonPrimary title="Tiếp tục" onPress={()=> handleSignUp()} />
         <Text style={styles.textBody}>
           Bạn đã có tài khoản ?{' '}

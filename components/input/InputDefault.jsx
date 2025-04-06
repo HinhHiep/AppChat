@@ -12,8 +12,16 @@ const InputDefault = ({
   placeholder = "Type here...",
   iconLeft = null,
   iconRight = false,
+  onChangeText ,
 }) => {
     const [showPass, setShowPass] = useState(false)
+    const [text, setText] = useState("")
+    const handleChangeText = (text) => {
+        setText(text)
+       if (onChangeText) {
+            onChangeText(text)
+        }
+    }
     const handlePass = () => {
         setShowPass(!showPass)
     }
@@ -29,6 +37,8 @@ const InputDefault = ({
             secureTextEntry={
                 iconRight && showPass ? false : iconRight ? true : false
             }
+          value={text}
+          onChangeText={handleChangeText}
         />
       </View>
       {iconRight && (

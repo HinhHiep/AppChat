@@ -6,10 +6,14 @@ import SignUpInfoScreen from "../screens/SignUpInfoScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ForgotPassScreen from "../screens/ForgotPassScreen";
 import ResetPassScreen from "../screens/ResetPassScreen";
+import { Provider } from 'react-redux'
+import  store  from '../redux/store'
  
 const Stack = createNativeStackNavigator();
 export const AppLayout = () => {
   return (
+    <Provider store={store}>
+      
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
       initialRouteName="Wellcome"
@@ -22,6 +26,7 @@ export const AppLayout = () => {
       <Stack.Screen name="ForgotPass" component={ForgotPassScreen} />
       <Stack.Screen name="ResetPass" component={ResetPassScreen} />
     </Stack.Navigator>
+    </Provider>
   );
 };
 
