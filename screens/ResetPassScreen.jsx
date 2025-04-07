@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
@@ -7,16 +7,20 @@ import { useNavigation } from '@react-navigation/native'
 import { useDispatch } from 'react-redux'
 import { changePass } from '@/api/UserApi'
 
-const ResetPassScreen = () => {
+const ResetPassScreen = ({route}) => {
     const navigation = useNavigation()
-    const route = navigation.getState().routes;
-    const phoneNumber = route[route.length - 1].params.phoneNumber;
+    const {sdt} = route.params;
+     useEffect(() => {
+        console.log('Sdt:', sdt);  // In ra sdts
+      }, [sdt]);
+    //const route = navigation.getState().routes
+    //const phoneNumber = route[route.length - 1].params.phoneNumber;
     const [password, setPassword] = useState('')
     const [rePassword, setRePassword] = useState('')
     const dispatch = useDispatch()
 
 
-    const handleResetPass = ({password, rePassword}) => {
+    const handleResetPass =async ({password, rePassword}) => {
         if (!password || !rePassword) {
             alert('Vui lòng nhập đầy đủ thông tin !')
             return
@@ -29,19 +33,17 @@ const ResetPassScreen = () => {
             alert('Mật khẩu không khớp !')
             return
         }
-        dispatch(changePass({ phoneNumber, password }))
-        .unwrap()
-        .then(() => {
-            console.log('Đổi mật khẩu thành công')
-            navigation.navigate('Login',{
-                phoneNumber: phoneNumber,
-            })
-        })
-        .catch((error) => {
-            console.error('Đổi mật khẩu thất bại:', error)
-            alert('Đổi mật khẩu thất bại !')
-        })
 
+        console.log(password);
+        console.log(sdt);
+        const matKhau = password;
+        const req = await changePass(sdt, matKhau)
+        console.log(req);
+        if (req.success) {
+            navigation.navigate("Login", { sdt });
+          } else {
+            alert(req.message || "Đổi mật khẩu không thành công!");
+          }
     }
   return (
    <LayoutDefault>
@@ -51,6 +53,8 @@ const ResetPassScreen = () => {
           iconRight={true} 
           onChangeText={(text) => setPassword(text)}
           value={password}
+          underlineColorAndroid="transparent"
+         autoCapitalize="none"
         />
          <InputDefault 
          placeholder="Nhập lại mật khẩu" 
@@ -58,6 +62,8 @@ const ResetPassScreen = () => {
          iconRight={true}
           onChangeText={(text) => setRePassword(text)}
           value={rePassword}
+          underlineColorAndroid="transparent"
+         autoCapitalize="none"
           />
             <ButtonPrimary title="Đổi mật khẩu" onPress={()=>handleResetPass({password, rePassword})} />
     </LayoutDefault>

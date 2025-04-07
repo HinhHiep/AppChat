@@ -63,6 +63,8 @@ const LoginScreen = () => {
         value={
           phoneNumberParams ? phoneNumberParams : phoneNumber
         }
+        underlineColorAndroid="transparent"
+        autoCapitalize="none"
         />
       <InputDefault
         placeholder="Mật khẩu"
@@ -70,6 +72,8 @@ const LoginScreen = () => {
         iconRight={true}
         onChangeText={(text) => setPassword(text)}
         value={password}
+        underlineColorAndroid="transparent"
+         autoCapitalize="none"
       />
       <TouchableOpacity onPress={() => handleForgotPass()}>
         <Text style={styles.text}>Quên mật khẩu ?</Text>

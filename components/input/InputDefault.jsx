@@ -39,6 +39,7 @@ const InputDefault = ({
             }
           value={text}
           onChangeText={handleChangeText}
+          autoCapitalize="none"
         />
       </View>
       {iconRight && (
@@ -74,8 +75,15 @@ const styles = StyleSheet.create({
   input: {
     color: "#000000",
     fontSize: 16,
-    height: 30,
+    height: 40,
     width: 250,
+    outlineStyle: "none",
+    borderWidth: 0,
+    paddingHorizontal: 10, // Giữ khoảng cách trái phải
+  paddingVertical: 8, // Điều chỉnh padding trên dưới
+  lineHeight: 20, // Giảm hoặc tăng line height nếu cần
+  textAlignVertical: "center", // Căn giữa nội dung theo chiều dọc trên Android
+
   },
   left: {
     flexDirection: "row",

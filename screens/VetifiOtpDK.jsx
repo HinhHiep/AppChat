@@ -5,13 +5,13 @@ import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
 
-const VetifiOtp = ({route}) => {
+const VetifiOtpDK = ({route}) => {
   const navigation = useNavigation()
-  const {email, data} = route.params;
+  const {email,sdt, data} = route.params;
   useEffect(() => {
     console.log('Email:', email);  // In ra email
     console.log('Data:', data);    // In ra data
-  }, [email, data]);
+  }, [email,sdt, data]);
   const [OTP, setOTP] = useState('')
   const handleLogin = () => {
     navigation.navigate('Login')
@@ -26,7 +26,7 @@ const VetifiOtp = ({route}) => {
       return
     }
     navigation.navigate('SignUpInfo',{
-      email: email
+      email: email,sdt:sdt
     })
   }
   return (
@@ -36,6 +36,8 @@ const VetifiOtp = ({route}) => {
         //iconLeft="person" 
         onChangeText={(text) => setOTP(text)}
         value={OTP}
+        underlineColorAndroid="transparent"
+         autoCapitalize="none"
       />
        <ButtonPrimary title="Tiếp tục" onPress={()=> handleSignUp()} />
         <Text style={styles.textBody}>
@@ -47,7 +49,7 @@ const VetifiOtp = ({route}) => {
     </LayoutDefault>
   )
 }
-export default VetifiOtp
+export default VetifiOtpDK
 const styles = StyleSheet.create({
   text: {
     color: '#03C7F7',

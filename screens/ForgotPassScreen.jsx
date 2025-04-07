@@ -4,31 +4,55 @@ import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
-
+import {getOTP,checkGmail,checkSDT} from '@/api/UserApi';
+import InputPhone from '@/components/input/InputPhone'
 const ForgotPassScreen = () => {
     const navigation = useNavigation()
-    const [phoneNumber, setPhoneNumber] = useState('')
+    const [email, setEmail] = useState('')
+    const [sdt, setSDT] = useState('')
     const handleLogin = () => {
         navigation.navigate('Login')
     }
-    const handleForgetPass = () => {
-        if (!phoneNumber) {
-            alert('Vui lòng nhập số điện thoại !')
+    const handleForgetPass =async () => {
+        if (!email) {
+            alert('Vui lòng nhập email !')
             return
         }
-        navigation.navigate('ResetPass',{
-            phoneNumber: phoneNumber,
-        })
+        console.log(email); 
+        console.log(sdt);
+       const reqEmail = await checkGmail(email);
+        const reqSDT = await checkSDT(sdt);
+        console.log(reqEmail.data.exists);
+        console.log(reqSDT.data.exists);
+        if (reqEmail.data.exists && reqSDT.data.exists) {
+            const data = await getOTP(email);
+        navigation.navigate('VetifiOtpQMK',{
+            email: email,sdt:sdt,data: data
+        });
+        } else{
+        alert('Email hoặc Số điện thoại không hợp lệ !')
+            return
+        }
     }
   return (
     <LayoutDefault>
-      <InputDefault placeholder="Số điện thoại" iconLeft="person"
-        onChangeText={(text) => setPhoneNumber(text)}
-        value={phoneNumber}
-        keyboardType="numeric"
+      <InputPhone
+        placeholder="Số điện thoại"
+        iconLeft="phone-portrait"   
+        onChangeText={(text) => setSDT(text)}  
+        value={sdt}  
+        underlineColorAndroid="transparent"  
+        autoCapitalize="none"  
+      />
+
+      <InputDefault placeholder="Email" iconLeft="mail"
+        onChangeText={(text) => setEmail(text)}
+        value={email}
+        underlineColorAndroid="transparent"
+         autoCapitalize="none"
       />
       <Text style={styles.textBody}>
-        Vui lòng nhập số điện thoại của bạn. Chúng tôi sẽ gửi mã xác nhận đến số điện thoại của bạn.
+        Vui lòng nhập Số điện thoại và Email của bạn. Chúng tôi sẽ gửi mã xác nhận đến Email của bạn.
       </Text>
         <ButtonPrimary title="Gửi mã xác nhận" onPress={()=>handleForgetPass()}/>
         <Text style={styles.textBody}>

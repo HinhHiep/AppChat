@@ -6,7 +6,8 @@ import SignUpInfoScreen from "../screens/SignUpInfoScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ForgotPassScreen from "../screens/ForgotPassScreen";
 import ResetPassScreen from "../screens/ResetPassScreen";
-import VetifiOtp from "../screens/VetifiOtp";
+import VetifiOtp from "../screens/VetifiOtpDK";
+import VetifiOtpQMK from "../screens/VetifiOtpQMK";
 import { Provider } from 'react-redux'
 import  store  from '../redux/store'
  
@@ -26,10 +27,10 @@ export const AppLayout = () => {
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="ForgotPass" component={ForgotPassScreen} />
       <Stack.Screen name="ResetPass" component={ResetPassScreen} />
-      <Stack.Screen name = "VetifiOtp" component={VetifiOtp} />
+      <Stack.Screen name = "VetifiOtpDK" component={VetifiOtp} />
+      <Stack.Screen name = "VetifiOtpQMK" component={VetifiOtpQMK} />
     </Stack.Navigator>
     </Provider>
   );
 };
-
 export default AppLayout;

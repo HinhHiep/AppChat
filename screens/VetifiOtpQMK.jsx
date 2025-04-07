@@ -1,52 +1,42 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
-import InputPhone from '@/components/input/InputPhone'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
-import {getOTP,checkGmail,checkSDT} from '@/api/UserApi';
 
-const SignUpScreen = () => {
+const VetifiOtpQMK = ({route}) => {
   const navigation = useNavigation()
-  const [email, setEmail] = useState('');
-  const [sdt, setSDT] = useState('');
+  const {email,sdt, data} = route.params;
+  useEffect(() => {
+    console.log('Email:', email);  // In ra email
+    console.log('Data:', data);    // In ra data
+    console.log('Sdt:', sdt);  // In ra sdt
+  }, [email,sdt,data]);
+  const [OTP, setOTP] = useState('')
   const handleLogin = () => {
     navigation.navigate('Login')
   }
-  const handleSignUp = async () => {
-    if (!email) {
-      alert('Vui lòng nhập email !')
+  const handleSignUp = () => {
+    if (!OTP) {
+      alert('Vui lòng nhập OTP !')
       return
     }
-    
-     if (!(await checkGmail(email)).data.exists &&  !(await checkSDT(sdt)).data.exists) {
-      const data = await getOTP(email);
-    console.log(data);
-    navigation.navigate('VetifiOtpDK',{
-      email: email,sdt:sdt,data: data
+    if (OTP !== data.otp) {
+      alert('OTP không đúng !')
+      return
+    }
+    navigation.navigate('ResetPass',{
+      email: email,sdt:sdt
     })
-    } else {
-      alert('Email hoặc Số điện thoại đã tồn tại !')
-      return
-    }
-    
   }
   return (
    <LayoutDefault>
-    <InputPhone
-        placeholder="Số điện thoại"
-        iconLeft="phone-portrait"   
-        onChangeText={(text) => setSDT(text)}  
-        value={sdt}  
-        underlineColorAndroid="transparent"  
-        autoCapitalize="none"  
-      />
        <InputDefault 
-        placeholder="Email" 
-        iconLeft="person" 
-        onChangeText={(text) => setEmail(text)}
-        value={email}
+        placeholder="key" 
+        //iconLeft="person" 
+        onChangeText={(text) => setOTP(text)}
+        value={OTP}
         underlineColorAndroid="transparent"
          autoCapitalize="none"
       />
@@ -60,9 +50,7 @@ const SignUpScreen = () => {
     </LayoutDefault>
   )
 }
-
-export default SignUpScreen
-
+export default VetifiOtpQMK
 const styles = StyleSheet.create({
   text: {
     color: '#03C7F7',
