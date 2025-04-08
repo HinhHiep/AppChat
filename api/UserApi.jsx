@@ -16,8 +16,8 @@ export const login = async (username, password) => {
         matKhau: password,
       }),
     });
-    console.log("Response status:", response.status);
-    console.log("Response headers:", response.headers.get("Content-Type"));
+    // console.log("Response status:", response.status);
+    // console.log("Response headers:", response.headers.get("Content-Type"));
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }

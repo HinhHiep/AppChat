@@ -20,8 +20,8 @@ export const loginUser = createAsyncThunk(
     if (response.error) {
       throw new Error(response.error);
     }
-    console.log("Login successful:", response.data);
-    return response.data;
+    console.log("Login successful:", response.user);
+    return response.user
   }
 );
 

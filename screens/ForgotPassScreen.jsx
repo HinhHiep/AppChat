@@ -1,15 +1,18 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
 import {getOTP,checkGmail,checkSDT} from '@/api/UserApi';
 import InputPhone from '@/components/input/InputPhone'
-const ForgotPassScreen = () => {
+const ForgotPassScreen = ({route}) => {
     const navigation = useNavigation()
     const [email, setEmail] = useState('')
     const [sdt, setSDT] = useState('')
+    const [enabled, setEnabled] = useState(false)
+    const {phoneNumber} = route.params || {};
+
     const handleLogin = () => {
         navigation.navigate('Login')
     }
@@ -34,27 +37,38 @@ const ForgotPassScreen = () => {
             return
         }
     }
+
+    useEffect(() => {
+      if((sdt.length == 10 || phoneNumber.length == 10 )&& email.length > 0){
+        setEnabled(true)
+      }else{
+        setEnabled(false)
+      }
+    },[sdt,email])
+
   return (
     <LayoutDefault>
-      <InputPhone
+      <InputDefault
         placeholder="Số điện thoại"
         iconLeft="phone-portrait"   
         onChangeText={(text) => setSDT(text)}  
-        value={sdt}  
-        underlineColorAndroid="transparent"  
+        value={ phoneNumber || sdt}
+        // underlineColorAndroid="transparent"  
         autoCapitalize="none"  
+        keyboardTypeNumeric
+
       />
 
       <InputDefault placeholder="Email" iconLeft="mail"
         onChangeText={(text) => setEmail(text)}
         value={email}
         underlineColorAndroid="transparent"
-         autoCapitalize="none"
+        autoCapitalize="none"
       />
       <Text style={styles.textBody}>
         Vui lòng nhập Số điện thoại và Email của bạn. Chúng tôi sẽ gửi mã xác nhận đến Email của bạn.
       </Text>
-        <ButtonPrimary title="Gửi mã xác nhận" onPress={()=>handleForgetPass()}/>
+        <ButtonPrimary title="Gửi mã xác nhận" onPress={()=>handleForgetPass()} enabled={enabled} />
         <Text style={styles.textBody}>
           Bạn chưa nhận được mã xác nhận ?{' '}
           <TouchableOpacity onPress={()=> handleForgetPass()}>
@@ -63,12 +77,15 @@ const ForgotPassScreen = () => {
         </Text>
         
 
+        <View style={{ flexDirection: "row", justifyContent: "center" }}>
         <Text style={styles.textBody}>
           Bạn đã nhớ mật khẩu ?{' '}
-          <TouchableOpacity onPress={()=> handleLogin()}>
+         
+        </Text>
+        <TouchableOpacity onPress={()=> handleLogin()}>
             <Text style={styles.text}>Đăng nhập</Text>  
           </TouchableOpacity>
-        </Text>
+        </View>
     </LayoutDefault>
   )
 }
