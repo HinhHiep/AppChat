@@ -7,6 +7,9 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { UserApi } from "@/api/UserApi";
 import { loginUser } from "@/redux/slices/UserSlice";
+import { CommonActions } from '@react-navigation/native';
+
+
 const LoginScreen = () => {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -41,7 +44,12 @@ const LoginScreen = () => {
   .unwrap()
   .then((user) => {
     console.log("Đăng nhập thành công:", user);
-    navigation.navigate("Home");
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      })
+    );
   })
   .catch((error) => {
     console.error("Đăng nhập thất bại:", error);

@@ -4,10 +4,11 @@ import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
-
-const VetifiOtpQMK = ({route}) => {
+import { useRoute } from '@react-navigation/native';
+const VetifiOtpQMK = () => {
   const navigation = useNavigation()
-  const {email,sdt, data} = route.params;
+  const route = useRoute();
+const { email, sdt, data } = route.params || {};
   useEffect(() => {
     console.log('Email:', email);  // In ra email
     console.log('Data:', data);    // In ra data
@@ -26,9 +27,14 @@ const VetifiOtpQMK = ({route}) => {
       alert('OTP không đúng !')
       return
     }
-    navigation.navigate('ResetPass',{
-      email: email,sdt:sdt
-    })
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'ResetPass',
+          params: { email: email, sdt: sdt }
+         }],
+      })
+    );
   }
   return (
    <LayoutDefault>

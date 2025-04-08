@@ -4,6 +4,7 @@ import LayoutDefault from '@/components/layout/LayoutDefault'
 import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
+import { CommonActions } from '@react-navigation/native'
 
 const VetifiOtpDK = ({route}) => {
   const navigation = useNavigation()
@@ -25,9 +26,14 @@ const VetifiOtpDK = ({route}) => {
       alert('OTP không đúng !')
       return
     }
-    navigation.navigate('SignUpInfo',{
-      email: email,sdt:sdt
-    })
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'SignUpInfo',
+          params: { email: email, sdt: sdt }
+         }],
+      })
+    );
   }
   return (
    <LayoutDefault>

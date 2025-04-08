@@ -6,6 +6,9 @@ import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
 import {getOTP,checkGmail,checkSDT} from '@/api/UserApi';
 import InputPhone from '@/components/input/InputPhone'
+import { CommonActions } from '@react-navigation/native';
+
+
 const ForgotPassScreen = () => {
     const navigation = useNavigation()
     const [email, setEmail] = useState('')
@@ -26,9 +29,14 @@ const ForgotPassScreen = () => {
         console.log(reqSDT.data.exists);
         if (reqEmail.data.exists && reqSDT.data.exists) {
             const data = await getOTP(email);
-        navigation.navigate('VetifiOtpQMK',{
-            email: email,sdt:sdt,data: data
-        });
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'VetifiOtpQMK' ,
+                  params: {email: email, sdt: sdt, data:data},
+                }],
+              })
+            );
         } else{
         alert('Email hoặc Số điện thoại không hợp lệ !')
             return

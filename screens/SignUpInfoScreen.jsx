@@ -9,8 +9,10 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "@/redux/slices/UserSlice";
 import { register } from "@/api/UserApi";
+import { useRoute } from '@react-navigation/native';
 
-const SignUpInfoScreen = ({route}) => {
+const SignUpInfoScreen = () => {
+  const route = useRoute();
   const {email,sdt} = route.params ;
    useEffect(() => {
        console.log('Email:', email);  // In ra email
@@ -27,7 +29,6 @@ const SignUpInfoScreen = ({route}) => {
    const dispatch = useDispatch();
    const { userNew } = useSelector((state) => state.user || {});
    console.log('userNew', userNew);
-
   // console.log(phoneNumber);
   const handleSignUp = async () => {
     if (!name || !birth || !email || !password || !rePassword) {

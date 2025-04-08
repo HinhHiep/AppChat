@@ -6,9 +6,10 @@ import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
 import { useDispatch } from 'react-redux'
 import { changePass } from '@/api/UserApi'
-
-const ResetPassScreen = ({route}) => {
+import { useRoute } from "@react-navigation/native";
+const ResetPassScreen = () => {
     const navigation = useNavigation()
+    const route = useRoute();
     const {sdt} = route.params;
      useEffect(() => {
         console.log('Sdt:', sdt);  // In ra sdts
@@ -40,7 +41,14 @@ const ResetPassScreen = ({route}) => {
         const req = await changePass(sdt, matKhau)
         console.log(req);
         if (req.success) {
-            navigation.navigate("Login", { sdt });
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Login',
+                params: {sdt: sdt}
+               }],
+            })
+          );
           } else {
             alert(req.message || "Đổi mật khẩu không thành công!");
           }
