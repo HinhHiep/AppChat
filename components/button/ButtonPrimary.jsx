@@ -4,9 +4,14 @@ import React from 'react'
 const ButtonPrimary = ({
     title,
     onPress,
+    enabled = true
 }) => {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
+    <TouchableOpacity 
+        style={ enabled ? styles.button : styles.buttonDisabled}
+        onPress={enabled ? onPress : null}
+        
+    >
         <Text style={styles.text}>{title}</Text>
     </TouchableOpacity>
   )
@@ -25,5 +30,11 @@ const styles = StyleSheet.create({
         color:'#ffffff',
         textAlign:'center',
         fontWeight:'bold'
+    }, 
+    buttonDisabled:{
+        padding:15,
+        borderRadius:20,
+        marginVertical:10,
+        backgroundColor: '#ccc'
     }
 })

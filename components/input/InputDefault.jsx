@@ -13,6 +13,9 @@ const InputDefault = ({
   iconLeft = null,
   iconRight = false,
   onChangeText ,
+  keyboardTypeNumeric = false,
+  value = "",
+
 }) => {
     const [showPass, setShowPass] = useState(false)
     const [text, setText] = useState("")
@@ -37,9 +40,13 @@ const InputDefault = ({
             secureTextEntry={
                 iconRight && showPass ? false : iconRight ? true : false
             }
-          value={text}
+          value={value}
           onChangeText={handleChangeText}
           autoCapitalize="none"
+            keyboardType={
+              keyboardTypeNumeric == true ? 'numeric': 'default'
+            }
+          
         />
       </View>
       {iconRight && (
@@ -76,7 +83,7 @@ const styles = StyleSheet.create({
     color: "#000000",
     fontSize: 16,
     height: 40,
-    width: 250,
+    width: 230,
     outlineStyle: "none",
     borderWidth: 0,
     paddingHorizontal: 10, // Giữ khoảng cách trái phải

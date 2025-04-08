@@ -29,6 +29,7 @@ const SignUpInfoScreen = () => {
    const dispatch = useDispatch();
    const { userNew } = useSelector((state) => state.user || {});
    console.log('userNew', userNew);
+   const [ enabled, setEnabled]=useState(false);
   // console.log(phoneNumber);
   const handleSignUp = async () => {
     if (!name || !birth || !email || !password || !rePassword) {
@@ -51,20 +52,33 @@ const SignUpInfoScreen = () => {
       alert("Mật khẩu không khớp!");
       return;
     }
+
+    navigation.navigate("Login", { phoneNumberParams:sdt });
   
     try {
-      const res = await register(sdt, name, birth, password, email,gender);
-      if (res) {
-        alert("Đăng ký tài khoản thành công!");
-        navigation.navigate("Login", { email, sdt });
-      } else {
-        alert("Đăng ký tài khoản không thành công!");
-      }
+      // const res = await register(sdt, name, birth, password, email,gender);
+      // if (res) {
+      //   alert("Đăng ký tài khoản thành công!");
+      //   console.log("phoneNumber", sdt);
+      //   navigation.navigate("Login", { phoneNumberParams:sdt });
+      // } else {
+      //   alert("Đăng ký tài khoản không thành công!");
+      // }
     } catch (err) {
       console.error("Lỗi đăng ký:", err);
       alert("Đã xảy ra lỗi khi đăng ký!");
     }
   };
+
+
+  useEffect(() => {
+        if (name.length > 0 && birth.length > 0 && password.length >= 6 && rePassword.length > 0) {
+          setEnabled(true);
+        }else {
+          setEnabled(false);
+        }
+  
+    }, [name, birth,password, rePassword]);
   
 
   return (
@@ -79,7 +93,7 @@ const SignUpInfoScreen = () => {
          autoCapitalize="none"
       />
       <InputDate 
-        placeholder="Ngày sinh" 
+        placeholder="Ngày sinh dạng dd/mm/yyyy"
         iconLeft="calendar" 
         onChangeText={(text) => setBirth(text)}
         value={birth}
@@ -121,7 +135,7 @@ const SignUpInfoScreen = () => {
         underlineColorAndroid="transparent"
          autoCapitalize="none"
       />
-      <ButtonPrimary title="Tạo tài khoản" onPress={handleSignUp} />
+      <ButtonPrimary title="Tạo tài khoản" onPress={handleSignUp} enabled={enabled} />
       </ScrollView>
     </LayoutDefault>
   );
