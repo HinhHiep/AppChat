@@ -9,6 +9,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```bash
    npm install
    ```
+   ```bash
+   npm install @react-navigation/native @react-navigation/bottom-tabs react-native-vector-icons react-native-screens react-native-safe-area-context react-native-gesture-handler react-native-reanimated
+   ```
+   expo install expo-image-picker
+
+
 
 2. Start the app
 

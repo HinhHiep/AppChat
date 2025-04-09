@@ -53,17 +53,17 @@ const SignUpInfoScreen = () => {
       return;
     }
 
-    navigation.navigate("Login", { phoneNumberParams:sdt });
+  //  navigation.navigate("Login", { phoneNumberParams:sdt });
   
     try {
-      // const res = await register(sdt, name, birth, password, email,gender);
-      // if (res) {
-      //   alert("Đăng ký tài khoản thành công!");
-      //   console.log("phoneNumber", sdt);
-      //   navigation.navigate("Login", { phoneNumberParams:sdt });
-      // } else {
-      //   alert("Đăng ký tài khoản không thành công!");
-      // }
+      const res = await register(sdt, name, birth, password, email,gender);
+      if (res) {
+        alert("Đăng ký tài khoản thành công!");
+        console.log("phoneNumber", sdt);
+        navigation.navigate("Login", { phoneNumberParams:sdt });
+      } else {
+        alert("Đăng ký tài khoản không thành công!");
+      }
     } catch (err) {
       console.error("Lỗi đăng ký:", err);
       alert("Đã xảy ra lỗi khi đăng ký!");

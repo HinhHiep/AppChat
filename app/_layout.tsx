@@ -8,6 +8,8 @@ import ForgotPassScreen from "../screens/ForgotPassScreen";
 import ResetPassScreen from "../screens/ResetPassScreen";
 import VetifiOtp from "../screens/VetifiOtpDK";
 import VetifiOtpQMK from "../screens/VetifiOtpQMK";
+import  BottomTabBar  from '@/components/bottomtab/BottomTab';
+import  ProfileScreen  from "../screens/ProfileScreen";
 import { Provider } from 'react-redux'
 import  store  from '../redux/store'
  
@@ -24,11 +26,12 @@ export const AppLayout = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="SignUpInfo" component={SignUpInfoScreen} />
-      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Home" component={BottomTabBar} />
       <Stack.Screen name="ForgotPass" component={ForgotPassScreen} />
       <Stack.Screen name="ResetPass" component={ResetPassScreen} />
       <Stack.Screen name = "VetifiOtpDK" component={VetifiOtp} />
       <Stack.Screen name = "VetifiOtpQMK" component={VetifiOtpQMK} />
+      <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
     </Stack.Navigator>
     </Provider>
   );

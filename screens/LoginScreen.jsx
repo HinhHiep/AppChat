@@ -7,14 +7,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { UserApi } from "@/api/UserApi";
 import { loginUser } from "@/redux/slices/UserSlice";
-<<<<<<< HEAD
 import { CommonActions } from '@react-navigation/native';
-
-
-const LoginScreen = () => {
-=======
 const LoginScreen = ({route}) => {
->>>>>>> 0593f3a1dcb7ef37125ba9162d19c1e60c4b8a5c
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -46,23 +40,6 @@ const LoginScreen = ({route}) => {
       return;
     }
     dispatch(loginUser({ username: phoneNumber, password }))
-<<<<<<< HEAD
-  .unwrap()
-  .then((user) => {
-    console.log("Đăng nhập thành công:", user);
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      })
-    );
-  })
-  .catch((error) => {
-    console.error("Đăng nhập thất bại:", error);
-    alert("Đăng nhập thất bại !");
-  }
-  );
-=======
       .unwrap()
       .then((user) => {
         console.log("Đăng nhập thành công:", user);
@@ -72,7 +49,6 @@ const LoginScreen = ({route}) => {
         console.error("Đăng nhập thất bại:", error);
         alert("Đăng nhập thất bại !");
       });
->>>>>>> 0593f3a1dcb7ef37125ba9162d19c1e60c4b8a5c
   };
 
   const handleForgotPass = () => {
@@ -165,4 +141,4 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     fontSize: 16,
   },
-});
+})
