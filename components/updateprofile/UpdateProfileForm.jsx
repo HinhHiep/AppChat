@@ -14,12 +14,14 @@ import InputDate from '@/components/input/InputDate';
 import InputDefault from '@/components/input/InputDefault';
 import InputPhone from '@/components/input/InputPhone';
 import ButtonPrimary from '@/components/button/ButtonPrimary';
-import * as ImagePicker from 'expo-image-picker';;
+import Icon from 'react-native-vector-icons/Ionicons'; 
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as DocumentPicker from "expo-document-picker";
+import { useNavigation } from '@react-navigation/native'
 
-
-const UpdateProfileForm = () => {
-  const { user } = useSelector((state) => state.user);
-
+const UpdateProfileForm = ({user,onClose}) => {
+const navigation = useNavigation();
   const [name, setName] = useState(user.name || '');
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.sdt || '');
@@ -28,48 +30,127 @@ const UpdateProfileForm = () => {
   const [anhBia, setAnhBia] = useState(user.anhBia || '');
   const [ngaySinh, setNgaySinh] = useState(user.ngaysinh || '');
   const [gioiTinh, setGioiTinh] = useState(user.gioiTinh || 'Nam');
-  useEffect(() => {
-    (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log('Media library permission:', status);
-      if (status !== 'granted') {
-        alert('App cần quyền truy cập ảnh để cập nhật avatar.');
+  const [fileanhDaiDien, setFileanhDaiDien] = useState(null);
+  const [fileanhBia, setFileanhBia] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]);
+//   useEffect(() => {
+//     (async () => {
+//       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+//       console.log('Media library permission:', status);
+//       if (status !== 'granted') {
+//         alert('App cần quyền truy cập ảnh để cập nhật avatar.');
+//       }
+//     })();
+//   }, []);
+  
+//   const handleSelectAvatar = async () => {
+//     let result = await ImagePicker.launchImageLibraryAsync({
+//       mediaTypes:  ImagePicker.MediaTypeOptions.Images, // ✅ sửa đúng enum
+//       quality: 0.7,
+//       allowsEditing: true,
+//       aspect: [1, 1],
+//     });
+  
+//     if (!result.canceled) {
+//       console.log(result.assets[0]); // ✅ kiểm tra đường dẫn ảnh
+//       //const file = result.assets[0].uri;
+//         // Kiểm tra định dạng file
+//         // const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+//         // file.forEach(element => {
+//         // const fileType = result.assets[0].mimeType;// Lấy phần mở rộng
+//         // if (!allowedTypes.includes(fileType)) {
+//         //     alert('Chỉ cho phép ảnh định dạng PNG, JPEG, JPG hoặc WEBP');
+//         //     return;
+//         // }
+//         // });
+//         // setFileanhDaiDien(result.assets[0].uri); // ✅ lưu vào state
+//     }
+//   };
+
+const handleSelectMultipleImages = async () => {
+    try {
+        const result = await DocumentPicker.getDocumentsAsync({
+        type: "image/*",
+        multiple: false, // 🔥 chọn nhiều ảnh
+        copyToCacheDirectory: true,
+      });
+  
+      if (!result.canceled && result.assets.length > 0) {
+        console.log("Đã chọn ảnh:", result.assets);
+    //     setSelectedImages(prev => [...prev, ...result.assets]); // Thêm vào mảng
+    //   console.log("Mảng ảnh đã chọn:", [...selectedImages, ...result.assets]);
+    //   console.log("Mảng ảnh đã chọn:", selectedImages[0].mimeType);
+      
+        
       }
-    })();
-  }, []);
-  
-  const handleSelectAvatar = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes:  ImagePicker.MediaTypeOptions.Images, // ✅ sửa đúng enum
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-  
-    if (!result.canceled) {
-      console.log(result.assets[0].uri); // ✅ cập nhật avatar
+    } catch (error) {
+      console.log("Lỗi khi chọn ảnh:", error);
     }
   };
 
+  const updateavatar = async () => {
+    if (!fileanhDaiDien) {
+      console.log('❗ Chưa chọn ảnh đại diện!');
+      return null;
+    }
+  
+    try {
+      
+      const formData = new FormData();
+     fileanhDaiDien.array.forEach(element => {
+        const fileType = element.split('.').pop(); // Lấy phần mở rộng
+      formData.append('image', {
+        uri: element,
+        type: `image/${fileType}`,
+        name: `avatar.${fileType}`,
+      });
+     });
+      
+  
+      console.log('📤 Form data:', formData);
+  
+      const response = await fetch("http://192.168.1.23:5000/api/upload", {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        const errText = await response.text(); // log chi tiết lỗi nếu cần
+        console.error("❌ Upload ảnh thất bại:", errText);
+        throw new Error("Upload ảnh thất bại");
+      }
+  
+      const data = await response.json();
+      console.log("✅ Upload thành công:", data.url);
+      return data.url;
+  
+    } catch (error) {
+      console.error("⚠️ Lỗi khi upload:", error);
+      return null;
+    }
+  }; 
+
+
   const handleUpdate = () => {
     // Thay bằng logic gọi API hoặc lưu dữ liệu
-    console.log('Cập nhật thông tin:', {
-      name,
-      email,
-      phone,
-      password,
-      ngaySinh,
-      gioiTinh,
-      anhDaiDien,
-      anhBia,
-    });
-
-    Alert.alert('Thành công', 'Thông tin đã được cập nhật!');
+      updateanhbia();
   };
 
+    const updateanhbia = async () => {
+        const url = await updateavatar(); // Gọi hàm upload ảnh đại diện
+        console.log('URL ảnh đại diện:', url); // ✅ kiểm tra URL ảnh đại diện
+    };
   return (
    <View style={styles.container}>
-   
+   <View style={styles.topBar}>
+               <TouchableOpacity onPress={onClose}>
+                   <Icon name="close" size={24} color="#fff" />
+               </TouchableOpacity>
+             
+           </View>
       <Text style={styles.title}>Cập nhật thông tin cá nhân</Text>
 <ScrollView style={styles.container1}>
       <InputDefault
@@ -92,7 +173,7 @@ const UpdateProfileForm = () => {
         style={styles.input}
       />
 
-      <View style={styles.genderContainer}>
+    <View style={styles.genderContainer}>
         <Text style={styles.label}>Giới tính</Text>
         <View style={styles.genderOptions}>
           <Pressable
@@ -114,17 +195,14 @@ const UpdateProfileForm = () => {
             <Text style={styles.genderText}>Nữ</Text>
           </Pressable>
         </View>
-      </View>
+    </View>
 
-            <TouchableOpacity onPress={handleSelectAvatar} style={styles.avatarContainer}>
-        {anhDaiDien ? (
-            <Image source={{ uri: anhDaiDien }} style={styles.avatar} />
-        ) : (
-            <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>Chọn ảnh đại diện</Text>
-            </View>
-        )}
-        </TouchableOpacity>
+      <TouchableOpacity onPress={handleSelectMultipleImages} style={styles.button}>
+        <Text style={styles.buttonText}>
+            {anhDaiDien ? "Thay ảnh đại diện" : "Chọn ảnh đại diện"}
+        </Text>
+      </TouchableOpacity>
+
 
         <InputDefault
         placeholder="Mật khẩu"
@@ -136,7 +214,7 @@ const UpdateProfileForm = () => {
 
       <ButtonPrimary
         title="Cập nhật"
-        onPress={handleUpdate}
+        onPress={onClose}
         style={styles.button}
         textStyle={styles.buttonText}
       />
@@ -144,7 +222,14 @@ const UpdateProfileForm = () => {
       </View>
   );
 };
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({topBar: {
+  position: 'absolute',
+  top: 10,
+  left: 15,
+  right: 15,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+},
     container1:{
         flex: 1,
     },

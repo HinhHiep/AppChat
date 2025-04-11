@@ -1,14 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
-
-const messages = [
-  { id: '1', name: 'Nguyễn Văn A', message: 'Alo, có đó không ?', time: '2 phút', unread: 1 },
-  { id: '2', name: 'Nguyễn Văn A', message: '[Sticker]', time: '2 phút', unread: 1 },
-  { id: '3', name: 'Nguyễn Văn A', message: 'Alo, có đó không ?', time: '2 phút', unread: 1 },
-  { id: '4', name: 'Nguyễn Văn A', message: '[Sticker]', time: '2 phút', unread: 1 },
-];
+import { useNavigation } from "@react-navigation/native";
+import { getChatsForUser } from '@/api/UserApi';
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -20,28 +15,79 @@ const FilterBar = () => (
   </View>
 );
 
-const MessageItem = ({ item }) => (
-  <View style={styles.messageItem}>
-    <View style={styles.avatar} />
-    <View style={styles.messageContent}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.message}>{item.message}</Text>
-    </View>
-    <View style={styles.timeBadge}>
-      <Text style={styles.time}>{item.time}</Text>
-      {item.unread > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{item.unread}</Text>
+const MessageItem = ({ item, onPress }) => {
+  const { user } = useSelector((state) => state.user);
+
+  // Đảm bảo lastMessage được sắp xếp mới nhất trước
+  const sortedMessages = item.lastMessage?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) || [];
+  const lastMsg = sortedMessages[0];
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'sent': return 'Đã gửi';
+      case 'delivered': return 'Đã nhận';
+      case 'read': return 'Đã xem';
+      default: return '';
+    }
+  };
+
+  return (
+    <TouchableOpacity onPress={onPress}>
+      <View style={styles.messageItem}>
+        <Image
+          source={{ uri: lastMsg?.senderInfo?.avatar || 'https://your-avatar-link.com/avatar.png' }}
+          style={styles.avatar}
+        />
+        <View style={styles.messageContent}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.message}>{lastMsg?.content || '...'}</Text>
         </View>
-      )}
-    </View>
-  </View>
-);
+        <View style={styles.timeBadge}>
+          <Text style={styles.time}>
+            {lastMsg?.timestamp ? new Date(lastMsg.timestamp).toLocaleTimeString() : ''}
+          </Text>
+          <Text style={styles.statusText}>{getStatusText(lastMsg?.status)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const MessageScreen = () => {
+  const [Messages, setMessages] = useState([]);
+  const { user } = useSelector((state) => state.user);
+  const navigation = useNavigation();
+
+  const handleChat = (item) => {
+    navigation.navigate("ChatScreen", { item });
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const response = await getChatsForUser(user.userID);
+
+      // Sort các đoạn chat theo tin nhắn mới nhất
+      const sortedChats = response.sort((a, b) => {
+        const aTimestamp = a.lastMessage?.[0]?.timestamp || 0;
+        const bTimestamp = b.lastMessage?.[0]?.timestamp || 0;
+        return new Date(bTimestamp) - new Date(aTimestamp);
+      });
+
+      setMessages(sortedChats);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.userID) {
+      fetchMessages();
+    }
+  }, [user.userID]);
+  console.log(Messages);
+
   return (
     <View style={styles.container}>
-      {/* Thanh tìm kiếm */}
       <View style={styles.searchBar}>
         <Icon name="search" size={20} color="#00caff" />
         <Text style={styles.searchText}>Tìm kiếm</Text>
@@ -53,11 +99,12 @@ const MessageScreen = () => {
 
       <FilterBar />
 
-      {/* Danh sách tin nhắn */}
       <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageItem item={item} />}
+        data={Messages}
+        keyExtractor={(item) => item._id}
+        renderItem={({ item }) => (
+          <MessageItem item={item} onPress={() => handleChat(item)} />
+        )}
         contentContainerStyle={{ paddingBottom: 100 }}
       />
     </View>
@@ -107,11 +154,10 @@ const styles = StyleSheet.create({
     borderColor: '#f0f0f0',
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ddd',
-    marginRight: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 50,
+    marginRight: 10,
   },
   messageContent: {
     flex: 1,
@@ -131,15 +177,11 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 5,
   },
-  badge: {
-    backgroundColor: 'red',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: {
-    color: 'white',
+  statusText: {
     fontSize: 12,
+    color: 'gray',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
 

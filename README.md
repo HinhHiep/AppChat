@@ -13,6 +13,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install @react-navigation/native @react-navigation/bottom-tabs react-native-vector-icons react-native-screens react-native-safe-area-context react-native-gesture-handler react-native-reanimated
    ```
    expo install expo-image-picker
+npm install expo-document-picker
+npm install react-native-image-crop-picker
+npm install react-native-image-picker
+npx expo install expo-media-library
+
+
 
 
 

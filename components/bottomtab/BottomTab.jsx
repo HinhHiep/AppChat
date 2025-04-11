@@ -13,6 +13,7 @@ const Tab = createBottomTabNavigator();
 const BottomTab = () =>{
   return (
       <Tab.Navigator
+        initialRouteName="Tin Nhắn"
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color }) => {
             let iconName;

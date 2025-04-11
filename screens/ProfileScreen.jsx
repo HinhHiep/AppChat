@@ -37,7 +37,7 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {showForm && <UpdateProfileForm user={user} />}
+      {showForm && <UpdateProfileForm user={user} onClose={() => setShowForm(false)} />}
       
     </View>
   );
