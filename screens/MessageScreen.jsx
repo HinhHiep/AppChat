@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image } 
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import { useNavigation } from "@react-navigation/native";
-import { getChatsForUser } from '@/api/UserApi';
+import { io } from 'socket.io-client';
+
+const socket = io('https://cnm-service.onrender.com');
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -17,10 +19,9 @@ const FilterBar = () => (
 
 const MessageItem = ({ item, onPress }) => {
   const { user } = useSelector((state) => state.user);
-
-  // Đảm bảo lastMessage được sắp xếp mới nhất trước
   const sortedMessages = item.lastMessage?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) || [];
   const lastMsg = sortedMessages[0];
+  const unreadCount = item.unreadCount || 0;
 
   const getStatusText = (status) => {
     switch (status) {
@@ -34,13 +35,22 @@ const MessageItem = ({ item, onPress }) => {
   return (
     <TouchableOpacity onPress={onPress}>
       <View style={styles.messageItem}>
-        <Image
-          source={{ uri: lastMsg?.senderInfo?.avatar || 'https://your-avatar-link.com/avatar.png' }}
-          style={styles.avatar}
-        />
+        <View style={{ position: 'relative' }}>
+          <Image
+            source={{ uri: lastMsg?.senderInfo?.avatar || 'https://your-avatar-link.com/avatar.png' }}
+            style={styles.avatar}
+          />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.messageContent}>
           <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.message}>{lastMsg?.content || '...'}</Text>
+          <Text style={styles.message}>
+            {lastMsg?.media_url?.length > 0 ? '[Image]' : lastMsg?.content || '...'}
+          </Text>
         </View>
         <View style={styles.timeBadge}>
           <Text style={styles.time}>
@@ -61,30 +71,76 @@ const MessageScreen = () => {
   const handleChat = (item) => {
     navigation.navigate("ChatScreen", { item });
   };
-
-  const fetchMessages = async () => {
-    try {
-      const response = await getChatsForUser(user.userID);
-
-      // Sort các đoạn chat theo tin nhắn mới nhất
-      const sortedChats = response.sort((a, b) => {
-        const aTimestamp = a.lastMessage?.[0]?.timestamp || 0;
-        const bTimestamp = b.lastMessage?.[0]?.timestamp || 0;
-        return new Date(bTimestamp) - new Date(aTimestamp);
-      });
-
-      setMessages(sortedChats);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-  };
-
   useEffect(() => {
-    if (user?.userID) {
-      fetchMessages();
+    if (socket && user?.userID) {
+      socket.emit("join_user", user.userID);
     }
-  }, [user.userID]);
-  console.log(Messages);
+  }, [user?.userID]);
+  
+  useEffect(() => {
+    if (user?.userID && socket) {
+      // Lấy danh sách chat
+      socket.emit("getChat", user.userID);
+  
+      // Nhận danh sách chat theo userID
+      socket.on("ChatByUserID", (data) => {
+        const sortedChats = data.sort((a, b) => {
+          const aTime = a.lastMessage?.[0]?.timestamp || 0;
+          const bTime = b.lastMessage?.[0]?.timestamp || 0;
+          return new Date(bTime) - new Date(aTime);
+        });
+        setMessages(sortedChats);
+      });
+  
+      // Nhận tin nhắn mới
+      socket.on("new_message", (newMsg) => {
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages];
+          const chatIndex = updatedMessages.findIndex(c => c.chatID === newMsg.chatID);
+  
+          if (chatIndex !== -1) {
+            const chat = updatedMessages[chatIndex];
+            chat.lastMessage = [
+              { ...newMsg, senderInfo: newMsg.senderInfo || {} },
+              ...(chat.lastMessage || []),
+            ];
+            chat.unreadCount = (chat.unreadCount || 0) + 1;
+          } else {
+            updatedMessages.unshift({
+              chatID: newMsg.chatID,
+              name: newMsg.senderInfo?.name || 'Tin nhắn mới',
+              unreadCount: 1,
+              lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
+            });
+          }
+  
+          return updatedMessages.sort((a, b) => {
+            const aTime = a.lastMessage?.[0]?.timestamp || 0;
+            const bTime = b.lastMessage?.[0]?.timestamp || 0;
+            return new Date(bTime) - new Date(aTime);
+          });
+        });
+      });
+  
+      // Nhận thông báo đã đọc
+      socket.on("status_update_all", ({ chatID, userID, status }) => {
+        if (status === "read" && userID === user.userID) {
+          setMessages((prevMessages) =>
+            prevMessages.map(chat =>
+              chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
+            )
+          );
+        }
+      });
+    }
+  
+    return () => {
+      socket.off("ChatByUserID");
+      socket.off("new_message");
+      socket.off("status_update_all");
+    };
+  }, [user?.userID]);
+  
 
   return (
     <View style={styles.container}>
@@ -101,7 +157,7 @@ const MessageScreen = () => {
 
       <FlatList
         data={Messages}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item) => item.chatID || item._id}
         renderItem={({ item }) => (
           <MessageItem item={item} onPress={() => handleChat(item)} />
         )}
@@ -158,6 +214,24 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 50,
     marginRight: 10,
+  },
+  badge: {
+    position: 'absolute',
+    right: -2,
+    top: -2,
+    backgroundColor: 'red',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    zIndex: 999,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   messageContent: {
     flex: 1,
