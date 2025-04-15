@@ -7,7 +7,11 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { UserApi } from "@/api/UserApi";
 import { loginUser } from "@/redux/slices/UserSlice";
-import { CommonActions } from '@react-navigation/native';
+import { isValidLogin } from "@/utilities/validateFunction";
+import { isValidPhoneNumber,
+  isValidPassword 
+ } from "@/utilities/validate";
+
 const LoginScreen = ({route}) => {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -15,7 +19,7 @@ const LoginScreen = ({route}) => {
   const dispatch = useDispatch();
   const [enabled, setEnabled] = useState(false);
   const { user } = useSelector((state) => state.user);
-  console.log(user);
+  const [errorPhone, setErrorPhone] = useState("");
 
   const {phoneNumberParams} = route.params || {};
   console.log("phoneNumberParams", phoneNumberParams);
@@ -24,19 +28,7 @@ const LoginScreen = ({route}) => {
     navigation.navigate("SignUp");
   };
   const handleLogin = (phoneNumber, password) => {
-    if (!phoneNumber || !password) {
-      alert("Vui lòng nhập đầy đủ thông tin !");
-      return;
-    }
-    if (phoneNumber.length < 10) {
-      alert("Số điện thoại không hợp lệ !");
-      return;
-    }
-
-    // regex phone number
-    const regex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
-    if (!regex.test(phoneNumber)) {
-      alert("Số điện thoại không hợp lệ !");
+    if (!isValidLogin(phoneNumber, password)) {
       return;
     }
     dispatch(loginUser({ username: phoneNumber, password }))
@@ -59,12 +51,12 @@ const LoginScreen = ({route}) => {
   
 
     useEffect(() => {
-      if (phoneNumber.length == 10  && password.length > 0){
-        setEnabled(true)
-      }else {
+      if (isValidPhoneNumber(phoneNumber) && password.length >= 8) {
+        setEnabled(true);
+      }
+      else {
         setEnabled(false);
       }
-
       
       
 
@@ -84,15 +76,27 @@ const LoginScreen = ({route}) => {
         placeholder="Số điện thoại"
         iconLeft="person"
         onChangeText={(text) => {
-          
-          setPhoneNumber(text)
-
-          
+          setPhoneNumber(text);
+          if(isValidPhoneNumber(text)) {
+            setErrorPhone("");
+          }
         }}
         value= {phoneNumberParams ? phoneNumberParams : phoneNumber}
         keyboardTypeNumeric
         autoCapitalize="none"
+        onBlur={() => {
+          if (!isValidPhoneNumber(phoneNumber)) {
+            setErrorPhone("Số điện thoại không hợp lệ!");
+          } else {
+            setErrorPhone("");
+          }
+        }}
+        maxLength={10}
       />
+      {errorPhone ? (
+        <Text style={{ color: "red", fontSize: 14 }}>(*){errorPhone}</Text>
+      ) : null}
+
       <InputDefault
         placeholder="Mật khẩu"
         iconLeft="lock-closed"

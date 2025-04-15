@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native'
 import {getOTP,checkGmail,checkSDT} from '@/api/UserApi';
 import InputPhone from '@/components/input/InputPhone'
 import { CommonActions } from '@react-navigation/native';
+import { isValidPhoneNumber, isValidEmail } from '@/utilities/validate'
 
 
 const ForgotPassScreen = ({route}) => {
@@ -15,6 +16,8 @@ const ForgotPassScreen = ({route}) => {
     const [sdt, setSDT] = useState('')
     const [enabled, setEnabled] = useState(false)
     const {phoneNumber} = route.params || {};
+    const [errPhone, setErrorPhone] = useState('')
+    const [errEmail, setErrorEmail] = useState('')
 
     const handleLogin = () => {
         navigation.navigate('Login')
@@ -47,35 +50,73 @@ const ForgotPassScreen = ({route}) => {
     }
 
     useEffect(() => {
-      if((sdt.length == 10 || phoneNumber.length == 10 )&& email.length > 0){
-        setEnabled(true)
-      }else{
-        setEnabled(false)
+      if (isValidEmail(email) && isValidPhoneNumber(sdt)) {
+        setEnabled(true);
+      }
+      else {
+        setEnabled(false);
       }
     },[sdt,email])
 
+    useEffect(() => {
+      if (phoneNumber) {
+        setSDT(phoneNumber);
+      }
+    }, [phoneNumber]);
+
   return (
     <LayoutDefault>
+       <Text style={styles.textBody}>
+        Vui lòng nhập Số điện thoại và Email của bạn. Chúng tôi sẽ gửi mã xác nhận đến Email của bạn.
+      </Text>
       <InputDefault
         placeholder="Số điện thoại"
         iconLeft="phone-portrait"   
-        onChangeText={(text) => setSDT(text)}  
-        value={ phoneNumber || sdt}
+        onChangeText={(text) => {
+          setSDT(text)  
+          if (isValidPhoneNumber(text)) {
+            setErrorPhone("");
+          }
+        }}  
+        value={ sdt}
         // underlineColorAndroid="transparent"  
         autoCapitalize="none"  
         keyboardTypeNumeric
+        maxLength={10}
+        onBlur={() => {
+          if (sdt.length != 10) {
+            setErrorPhone("Số điện thoại không hợp lệ!");
+          } else {
+            setErrorPhone("");
+          }
+        }}
 
       />
+      {errPhone.length > 0 && <Text style={{color: 'red'}}>(*) {errPhone}</Text>}
 
       <InputDefault placeholder="Email" iconLeft="mail"
-        onChangeText={(text) => setEmail(text)}
+        onChangeText={(text) => 
+        {
+          setEmail(text)
+        if(isValidEmail(text)) {
+            setErrorEmail("");
+          }
+          
+        }}
         value={email}
         underlineColorAndroid="transparent"
         autoCapitalize="none"
+        keyboardType="email-address"
+        onBlur={() => {
+          if (!isValidEmail(email)) {
+            setErrorEmail("Email không hợp lệ!");
+          } else {
+            setErrorEmail("");
+          }
+        }}
       />
-      <Text style={styles.textBody}>
-        Vui lòng nhập Số điện thoại và Email của bạn. Chúng tôi sẽ gửi mã xác nhận đến Email của bạn.
-      </Text>
+      {errEmail.length > 0 && <Text style={{color: 'red'}}>(*) {errEmail}</Text>}
+     
         <ButtonPrimary title="Gửi mã xác nhận" onPress={()=>handleForgetPass()} enabled={enabled} />
         <Text style={styles.textBody}>
           Bạn chưa nhận được mã xác nhận ?{' '}
