@@ -1,5 +1,6 @@
 // sdt, matKhau
 import axios from "axios";
+import { Alert } from "react-native";
 export const login = async (username, password) => {
     if (!username || !password) {
         throw new Error("Username and password are required");
@@ -51,7 +52,7 @@ export const register = async (phoneNumber, name, birth,password,email,gender) =
       }),
     });
     if (!response.ok) {
-      throw new Error("Network response was not ok");
+      Alert.alert("Đăng ký không thành công !");
     }
     const data = await response.json();
     return data;

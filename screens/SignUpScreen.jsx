@@ -7,6 +7,7 @@ import ButtonPrimary from "@/components/button/ButtonPrimary";
 import { useNavigation } from "@react-navigation/native";
 import { getOTP, checkGmail, checkSDT } from "@/api/UserApi";
 
+
 const SignUpScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState("");
