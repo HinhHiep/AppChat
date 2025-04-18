@@ -1,16 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard ,Modal} from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from "expo-image-picker";
 import Icon from 'react-native-vector-icons/Ionicons';
+import FAIcon from 'react-native-vector-icons/FontAwesome';
+import { Picker } from 'emoji-mart-native';
+import Video from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import InputDefault from '@/components/input/InputDefault';
 import { io } from 'socket.io-client';
 
-const socket = io('https://cnm-service.onrender.com');
+//const socket = io('https://cnm-service.onrender.com');
+const socket = io('http://192.168.1.110:5000');
 
 const ChatScreen = () => {
+
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useSelector((state) => state.user);
@@ -22,7 +27,30 @@ const ChatScreen = () => {
   const [selected, setSelected] = useState([]);
   const [showGallery, setShowGallery] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [videos, setVideos] = useState([]);
   const [Video_Image,setVideo_Image] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const scrollContainerRef = useRef(null);
+ console.log("item",item);
+
+  const handleEmojiSelect = (emojiObject) => {
+    // Lấy emoji từ emojiObject
+    const emoji = emojiObject.native;
+    console.log("hhhh",emoji);
+    setMessage((prevMessage) => prevMessage + emoji);  // Thêm emoji vào tin nhắn
+    setShowEmojiPicker(false);  // Đóng emoji picker sau khi chọn
+  };
+
+  const handleScroll = (event) => {
+    const yOffset = event.nativeEvent.contentOffset.y;
+    if (yOffset <= 0 && visibleCount < message.length) {
+      setVisibleCount((prev) => prev + 10);
+    }
+  };
+  const sortedMessages = [...message].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const visibleMessages = sortedMessages.slice(-visibleCount); // lấy 10 tin nhắn mới nhất
+
+
   const pickVideo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Videos,
@@ -31,9 +59,50 @@ const ChatScreen = () => {
     });
   
     if (!result.canceled) {
-      const video = result.assets[0];
-      console.log("Video URI:", video.uri);
+      //console.log("Video URI:", result.assets);
+      //const video = result.assets[0];
+      setVideos(result.assets);
+      console.log("Video URI:",result.assets);
+      console.log("Video Type:",result.assets);
+
       // Gửi video này về server
+    }
+  };
+  const sendSelectedVideos = async () => {
+    if (!videos.length) return;
+    const formData = new FormData();
+    videos.forEach((video) => {
+      const fileType = video.uri.split('.').pop();
+      formData.append('files', {
+        uri: video.uri,
+        type: `video/${fileType}`,
+        name: `video.${fileType}`,
+      });
+    });
+  
+    try {
+      const response = await fetch("https://cnm-service.onrender.com/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "multipart/form-data" },
+        body: formData,
+      });
+      const data = await response.json();
+      const newMsg = {
+        tempID: Date.now().toString(),
+        chatID: item.chatID,
+        senderID: user.userID,
+        content: '',
+        type: 'video',
+        timestamp: new Date().toISOString(),
+        media_url: data.urls,
+        status: 'sent',
+        senderInfo: { name: user.name, avatar: user.anhDaiDien },
+      };
+      setMessage((prev) => [...prev, newMsg]);
+      socket.emit('send_message', newMsg);
+      setVideos([]);  // Reset videos state
+    } catch (error) {
+      console.error("Upload error:", error);
     }
   };
   useEffect(() => {
@@ -74,10 +143,20 @@ const ChatScreen = () => {
     socket.on(`status_update_${item.chatID}`, handleStatusUpdate);
     socket.on(`unsend_${item.chatID}`, handleUnsendMessage);
 
+    socket.on("unsend_notification", (updatedMessage) => {
+      setMessage(prevMessages =>
+        prevMessages.map(m =>
+          m.messageID === updatedMessage.messageID ? { ...m, ...updatedMessage } : m
+        )
+      );
+          console.log('Received unsend notification:', updatedMessage);
+    });
+
     return () => {
       socket.off(item.chatID, handleNewMessage);
       socket.off(`status_update_${item.chatID}`, handleStatusUpdate);
       socket.off(`unsend_${item.chatID}`, handleUnsendMessage);
+      socket.off('unsend_notification');
     };
   }, [item.chatID, user.userID]);
 
@@ -123,7 +202,7 @@ const ChatScreen = () => {
     const formData = new FormData();
     selected.forEach((img) => {
       const fileType = img.uri.split('.').pop();
-      formData.append('image', {
+      formData.append('files', {
         uri: img.uri,
         type: `image/${fileType}`,
         name: `upload.${fileType}`,
@@ -159,12 +238,14 @@ const ChatScreen = () => {
 
   const handleLongPress = (msg) => {
     if (msg.senderID !== user.userID || msg.type === 'unsent') return;
+    console.log('Long Pressed:', msg.messageID);
+    console.log('Chat ID:', item.chatID);
     Alert.alert('Thu hồi tin nhắn', 'Bạn có chắc muốn thu hồi?', [
       { text: 'Hủy' },
       {
         text: 'Thu hồi',
         style: 'destructive',
-        onPress: () => socket.emit('unsend_message', { chatID: item.chatID, messageID: msg.messageID }),
+        onPress: () => socket.emit('unsend_message', { chatID: item.chatID, messageID: msg.messageID, senderID: user.userID }),
       },
     ]);
   };
@@ -177,17 +258,45 @@ const ChatScreen = () => {
         </TouchableOpacity>
         <Image source={{ uri: item.avatar || user?.anhDaiDien }} style={styles.avatarHeader} />
         <Text style={styles.username}>{item?.name}</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionButton}>
+            <Icon name="call" size={20} color="#00caff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Icon name="videocam" size={20} color="#00caff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('GroupOptionsScreen', { chatID: item.chatID })}
+          >
+            <Icon name="ellipsis-vertical" size={20} color="#00caff" />
+          </TouchableOpacity>
+        </View>
       </View>
-
-      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.chat}>
-        {message.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((msg, index) => {
+      <ScrollView 
+      ref={scrollContainerRef}
+            onScroll={handleScroll} 
+            contentContainerStyle={styles.chat}>
+        {visibleMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((msg, index) => {
           const isMine = msg.senderID === user.userID;
           return (
             <TouchableOpacity key={msg._id || index} onLongPress={() => handleLongPress(msg)}>
               <View style={isMine ? styles.myMessageContainer : styles.otherMessageContainer}>
                 {!isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
                 <View style={isMine ? styles.myMessage : styles.otherMessage}>
-                  {msg.type === 'unsent' ? (
+                  {msg.type === 'video' && Array.isArray(msg.media_url) ? (
+                        msg.media_url.map((vid, i) => (
+                          <Video
+                            key={i}
+                            source={{ uri: vid }}
+                            controls
+                            resizeMode="contain"
+                            paused={false}
+                            style={{ width: 200, height: 150 }}
+                          />
+                        ))
+                      )
+                    : msg.type === 'unsend' ? (
                     <Text style={{ fontStyle: 'italic', color: 'gray' }}>Tin nhắn đã được thu hồi</Text>
                   ) : msg.type === 'image' ? (
                     msg.media_url.map((img, i) => (
@@ -201,7 +310,7 @@ const ChatScreen = () => {
                   ) : (
                     <Text style={{ color: isMine ? '#eaeaea' : '#fff' }}>{msg.content}</Text>
                   )}
-                  {isMine && msg.type !== 'unsent' && (
+                  {isMine && msg.type !== 'unsend' && (
                     <Text style={styles.statusText}>{msg.status === 'read' ? 'Đã xem' : 'Đã gửi'}</Text>
                   )}
                 </View>
@@ -234,7 +343,7 @@ const ChatScreen = () => {
           })}
         </ScrollView>
       )}
-
+ {showEmojiPicker && (<Picker onEmojiSelect={handleEmojiSelect} />)}
 <View style={styles.inputBar}>
   <InputDefault
     placeholder="Tin nhắn"
@@ -246,14 +355,21 @@ const ChatScreen = () => {
   <TouchableOpacity onPress={() => Keyboard.dismiss() || setShowEmojiPicker(!showEmojiPicker)}>
     <Icon name="happy-outline" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
-  
+       
+ 
   <TouchableOpacity onPress={() => setShowGallery(!showGallery)}>
     <Icon name="image" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
-  
+  { videos.length ===0 && (
   <TouchableOpacity onPress={()=>{pickVideo();setVideo_Image("Video")}}>
-    <Icon name="play" size={22} color="#ffaa00" style={styles.icon} />
+    <FAIcon name="paperclip" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
+   )}
+  {videos.length > 0 && (
+    <TouchableOpacity onPress={()=>{sendSelectedVideos()}}>
+    <FAIcon name="save" size={22} color="#ffaa00" style={styles.icon} />
+  </TouchableOpacity>
+  )}
   
   {selected.length > 0 && (
     <TouchableOpacity onPress={sendSelectedImages}>
@@ -332,6 +448,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,    // Giãn cách giữa các icon
   },
   statusText: { fontSize: 10, color: '#aaa', marginTop: 2, textAlign: 'right' },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    backgroundColor: 'gray',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 5,
+  }
 });
 
 export default ChatScreen;

@@ -9,10 +9,9 @@ const IndividualScreen = () => {
     const { user } = useSelector((state) => state.user);
     const menuItems = [
         { icon: 'cloud', label: 'zCloud', desc: 'Không gian lưu trữ dữ liệu trên đám mây' },
-        { icon: 'magic', label: 'zStyle Nổi bật trên Zalo', desc: 'Hình nền và nhạc cho cuộc gọi Zalo' },
+        
         { icon: 'cloud-outline', label: 'Cloud của tôi', desc: 'Lưu trữ các tin nhắn quan trọng' },
         { icon: 'timer-outline', label: 'Dữ liệu trên máy', desc: 'Quản lý dữ liệu Zalo của bạn' },
-        { icon: 'qr-code', label: 'Ví QR', desc: 'Lưu trữ và xuất trình các mã QR quan trọng' },
         { icon: 'shield-outline', label: 'Tài khoản và bảo mật' },
         { icon: 'lock-closed-outline', label: 'Quyền riêng tư' },
       ];
@@ -34,11 +33,11 @@ const IndividualScreen = () => {
                 />
                 <View style={styles.info}>
                 <Text style={styles.name}>{user?.name || 'TuấnVươngg'}</Text>
+                <Text style={styles.name}>{user?.sdt}</Text>
                 <Text style={styles.link}>Xem trang cá nhân</Text>
                 </View>
                 <Ionicons name="people" size={18} color="#0af" />
         </TouchableOpacity>
-
       <ScrollView style={{ flex: 1 }}>
         {menuItems.map((item, index) => (
           <TouchableOpacity key={index} style={styles.menuItem}>
@@ -49,6 +48,9 @@ const IndividualScreen = () => {
             </View>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity  style={styles.menuItem} onPress={() => navigation.navigate('Login')}>
+          <Text style={{color:"gray"}}>Đăng xuất</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

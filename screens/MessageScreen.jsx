@@ -4,8 +4,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import { useNavigation } from "@react-navigation/native";
 import { io } from 'socket.io-client';
+import SearchBar from '../screens/SearchBar'; // Assuming you have a SearchBar component
 
-const socket = io('https://cnm-service.onrender.com');
+//const socket = io('https://cnm-service.onrender.com');
+const socket = io("http://192.168.1.110:5000"); // Kết nối với server socket
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -19,8 +21,36 @@ const FilterBar = () => (
 
 const MessageItem = ({ item, onPress }) => {
   const { user } = useSelector((state) => state.user);
+  console.log("MessageItem:", item);
   const sortedMessages = item.lastMessage?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) || [];
   const lastMsg = sortedMessages[0];
+  const [avatar, setAvatar] = useState(null);
+  const fetchAvatar = async (item) => {
+    try{
+        const createResponse = await fetch("http://192.168.1.110:5000/api/chatmemberBychatID&userID", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userID: user.userID,
+            chatID: item.chatID
+          }),
+        });
+        const data = await createResponse.json();
+        console.log(data);
+        if (createResponse.ok) {
+          setAvatar(data?.anhDaiDien);
+        }
+    }catch (error) {
+      console.error('Error fetching friends list:', error);
+    }
+  }
+ useEffect(() => {
+  if (!item) return;
+     fetchAvatar(item);
+    },[item]);
+
   const unreadCount = item.unreadCount || 0;
 
   const getStatusText = (status) => {
@@ -37,10 +67,10 @@ const MessageItem = ({ item, onPress }) => {
       <View style={styles.messageItem}>
         <View style={{ position: 'relative' }}>
           <Image
-            source={{ uri: lastMsg?.senderInfo?.avatar || 'https://your-avatar-link.com/avatar.png' }}
+            source={{ uri: avatar}}
             style={styles.avatar}
           />
-          {unreadCount > 0 && (
+          {unreadCount > 0 &&  (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
@@ -49,7 +79,15 @@ const MessageItem = ({ item, onPress }) => {
         <View style={styles.messageContent}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.message}>
-            {lastMsg?.media_url?.length > 0 ? '[Image]' : lastMsg?.content || '...'}
+          {lastMsg?.type === 'image'
+              ? '[Image]'
+              : lastMsg?.type === 'video'
+              ? '[Video]'
+              : lastMsg?.type === 'audio'
+              ? '[Audio]'
+              : lastMsg?.type === 'unsend'
+              ? '[Tin nhắn đã thu hồi]'
+              : lastMsg?.content}
           </Text>
         </View>
         <View style={styles.timeBadge}>
@@ -72,92 +110,119 @@ const MessageScreen = () => {
     navigation.navigate("ChatScreen", { item });
   };
   useEffect(() => {
-    if (socket && user?.userID) {
+    if (!socket || !user?.userID) return;
+  
+    const handleConnect = () => {
+      console.log("📡 Socket connected:", socket.id);
       socket.emit("join_user", user.userID);
-    }
-  }, [user?.userID]);
-  
-  useEffect(() => {
-    if (user?.userID && socket) {
-      // Lấy danh sách chat
       socket.emit("getChat", user.userID);
+    };
   
-      // Nhận danh sách chat theo userID
-      socket.on("ChatByUserID", (data) => {
-        const sortedChats = data.sort((a, b) => {
+    if (socket.connected) {
+      handleConnect();
+    } else {
+      socket.on("connect", handleConnect);
+    }
+  
+    const handleChatByUserID = (data) => {
+      const sortedChats = data.sort((a, b) => {
+        const aTime = a.lastMessage?.[0]?.timestamp || 0;
+        const bTime = b.lastMessage?.[0]?.timestamp || 0;
+        return new Date(bTime) - new Date(aTime);
+      });
+      setMessages(sortedChats);
+    };
+  
+    const handleNewMessage = (newMsg) => {
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages];
+        const chatIndex = updatedMessages.findIndex(c => c.chatID === newMsg.chatID);
+    
+        if (chatIndex !== -1) {
+          const chat = updatedMessages[chatIndex];
+          const oldMessages = chat.lastMessage || [];
+    
+          // Kiểm tra xem đã có tin nhắn này chưa (dựa vào messageID hoặc tempID)
+          const msgIndex = oldMessages.findIndex(
+            m => m.messageID === newMsg.messageID || m.tempID === newMsg.tempID
+          );
+    
+          if (msgIndex !== -1) {
+            // Nếu đã có, cập nhật nội dung
+            oldMessages[msgIndex] = { ...oldMessages[msgIndex], ...newMsg };
+          } else {
+            // Nếu chưa có, thêm vào đầu mảng
+            oldMessages.unshift({ ...newMsg, senderInfo: newMsg.senderInfo || {} });
+            chat.unreadCount = (chat.unreadCount || 0) + 1;
+          }
+    
+          chat.lastMessage = oldMessages;
+        } else {
+          // Nếu chưa có đoạn chat này, tạo mới
+          updatedMessages.unshift({
+            chatID: newMsg.chatID,
+            name: newMsg.senderInfo?.name || 'Tin nhắn mới',
+            unreadCount: 1,
+            lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
+          });
+        }
+    
+        // Sắp xếp lại các cuộc trò chuyện theo thời gian
+        return updatedMessages.sort((a, b) => {
           const aTime = a.lastMessage?.[0]?.timestamp || 0;
           const bTime = b.lastMessage?.[0]?.timestamp || 0;
           return new Date(bTime) - new Date(aTime);
         });
-        setMessages(sortedChats);
       });
-  
-      // Nhận tin nhắn mới
-      socket.on("new_message", (newMsg) => {
-        setMessages((prevMessages) => {
-          const updatedMessages = [...prevMessages];
-          const chatIndex = updatedMessages.findIndex(c => c.chatID === newMsg.chatID);
-  
-          if (chatIndex !== -1) {
-            const chat = updatedMessages[chatIndex];
-            chat.lastMessage = [
-              { ...newMsg, senderInfo: newMsg.senderInfo || {} },
-              ...(chat.lastMessage || []),
-            ];
-            chat.unreadCount = (chat.unreadCount || 0) + 1;
-          } else {
-            updatedMessages.unshift({
-              chatID: newMsg.chatID,
-              name: newMsg.senderInfo?.name || 'Tin nhắn mới',
-              unreadCount: 1,
-              lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
-            });
-          }
-  
-          return updatedMessages.sort((a, b) => {
-            const aTime = a.lastMessage?.[0]?.timestamp || 0;
-            const bTime = b.lastMessage?.[0]?.timestamp || 0;
-            return new Date(bTime) - new Date(aTime);
-          });
-        });
-      });
-  
-      // Nhận thông báo đã đọc
-      socket.on("status_update_all", ({ chatID, userID, status }) => {
-        if (status === "read" && userID === user.userID) {
-          setMessages((prevMessages) =>
-            prevMessages.map(chat =>
-              chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
-            )
-          );
-        }
-      });
-    }
-  
-    return () => {
-      socket.off("ChatByUserID");
-      socket.off("new_message");
-      socket.off("status_update_all");
     };
-  }, [user?.userID]);
+    
+  
+    const handleStatusUpdate = ({ chatID, userID, status }) => {
+      if (status === "read" && userID === user.userID) {
+        setMessages((prevMessages) =>
+          prevMessages.map(chat =>
+            chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
+          )
+        );
+      }
+    };
+  
+    
+ 
+  
+    // Đăng ký socket listeners
+    socket.on("ChatByUserID", handleChatByUserID);
+    socket.on("new_message", handleNewMessage);
+    socket.on("unsend_notification", handleNewMessage);
+    socket.on("status_update_all", handleStatusUpdate);
+    socket.on("newChat1-1", (data)=>{
+      console.log("New chat 1-1:", data);
+       setMessages((prevMessages) => [...prevMessages, data]);
+    });
+  
+    // Cleanup
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("ChatByUserID", handleChatByUserID);
+      socket.off("new_message", handleNewMessage);
+      socket.off("status_update_all", handleStatusUpdate);
+      socket.off("newChat1-1");
+      socket.emit("unsend_notification", handleNewMessage);
+    };
+  }, [socket, user?.userID]);
+  
+  
   
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchBar}>
-        <Icon name="search" size={20} color="#00caff" />
-        <Text style={styles.searchText}>Tìm kiếm</Text>
-        <View style={styles.searchIcons}>
-          <Icon name="qr-code-outline" size={22} color="#00caff" style={{ marginRight: 15 }} />
-          <Icon name="add" size={22} color="#00caff" />
-        </View>
-      </View>
+      <SearchBar />
 
       <FilterBar />
 
       <FlatList
         data={Messages}
-        keyExtractor={(item) => item.chatID || item._id}
+        keyExtractor={(item) => item.chatID}
         renderItem={({ item }) => (
           <MessageItem item={item} onPress={() => handleChat(item)} />
         )}
