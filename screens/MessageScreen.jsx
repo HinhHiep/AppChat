@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 import SearchBar from '../screens/SearchBar'; // Assuming you have a SearchBar component
 
 //const socket = io('https://cnm-service.onrender.com');
-const socket = io("http://192.168.1.110:5000"); // Kết nối với server socket
+const socket = io("http://192.168.186.55:5000"); // Kết nối với server socket
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -27,7 +27,7 @@ const MessageItem = ({ item, onPress }) => {
   const [avatar, setAvatar] = useState(null);
   const fetchAvatar = async (item) => {
     try{
-        const createResponse = await fetch("http://192.168.1.110:5000/api/chatmemberBychatID&userID", {
+        const createResponse = await fetch("https://echoapp-rho.vercel.app/api/chatmemberBychatID&userID", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -105,114 +105,237 @@ const MessageScreen = () => {
   const [Messages, setMessages] = useState([]);
   const { user } = useSelector((state) => state.user);
   const navigation = useNavigation();
+  console.log("User--:", user);
 
   const handleChat = (item) => {
     navigation.navigate("ChatScreen", { item });
   };
-  useEffect(() => {
-    if (!socket || !user?.userID) return;
-  
-    const handleConnect = () => {
-      console.log("📡 Socket connected:", socket.id);
-      socket.emit("join_user", user.userID);
-      socket.emit("getChat", user.userID);
-    };
-  
-    if (socket.connected) {
-      handleConnect();
-    } else {
-      socket.on("connect", handleConnect);
-    }
-  
-    const handleChatByUserID = (data) => {
-      const sortedChats = data.sort((a, b) => {
-        const aTime = a.lastMessage?.[0]?.timestamp || 0;
-        const bTime = b.lastMessage?.[0]?.timestamp || 0;
-        return new Date(bTime) - new Date(aTime);
-      });
-      setMessages(sortedChats);
-    };
-  
-    const handleNewMessage = (newMsg) => {
-      setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages];
-        const chatIndex = updatedMessages.findIndex(c => c.chatID === newMsg.chatID);
-    
-        if (chatIndex !== -1) {
-          const chat = updatedMessages[chatIndex];
-          const oldMessages = chat.lastMessage || [];
-    
-          // Kiểm tra xem đã có tin nhắn này chưa (dựa vào messageID hoặc tempID)
-          const msgIndex = oldMessages.findIndex(
-            m => m.messageID === newMsg.messageID || m.tempID === newMsg.tempID
-          );
-    
-          if (msgIndex !== -1) {
-            // Nếu đã có, cập nhật nội dung
-            oldMessages[msgIndex] = { ...oldMessages[msgIndex], ...newMsg };
-          } else {
-            // Nếu chưa có, thêm vào đầu mảng
-            oldMessages.unshift({ ...newMsg, senderInfo: newMsg.senderInfo || {} });
-            chat.unreadCount = (chat.unreadCount || 0) + 1;
-          }
-    
-          chat.lastMessage = oldMessages;
-        } else {
-          // Nếu chưa có đoạn chat này, tạo mới
-          updatedMessages.unshift({
-            chatID: newMsg.chatID,
-            name: newMsg.senderInfo?.name || 'Tin nhắn mới',
-            unreadCount: 1,
-            lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
-          });
-        }
-    
-        // Sắp xếp lại các cuộc trò chuyện theo thời gian
-        return updatedMessages.sort((a, b) => {
-          const aTime = a.lastMessage?.[0]?.timestamp || 0;
-          const bTime = b.lastMessage?.[0]?.timestamp || 0;
-          return new Date(bTime) - new Date(aTime);
-        });
-      });
-    };
-    
-  
-    const handleStatusUpdate = ({ chatID, userID, status }) => {
-      if (status === "read" && userID === user.userID) {
-        setMessages((prevMessages) =>
-          prevMessages.map(chat =>
-            chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
-          )
-        );
-      }
-    };
-  
-    
- 
-  
-    // Đăng ký socket listeners
-    socket.on("ChatByUserID", handleChatByUserID);
-    socket.on("new_message", handleNewMessage);
-    socket.on("unsend_notification", handleNewMessage);
-    socket.on("status_update_all", handleStatusUpdate);
-    socket.on("newChat1-1", (data)=>{
-      console.log("New chat 1-1:", data);
-       setMessages((prevMessages) => [...prevMessages, data]);
+
+useEffect(() => {
+  if (!socket || !user?.userID) return;
+
+  const handleConnect = () => {
+    console.log("✅ Socket connected:", socket.id);
+    socket.emit("join_user", user.userID);
+    socket.emit("getChat", user.userID);
+  };
+
+  const handleChatByUserID = (data) => {
+   // console.log("📥 ChatByUserID data:", data);
+    const sortedChats = data.sort((a, b) => {
+      const aTime = new Date(a.lastMessage?.[0]?.timestamp || 0);
+      const bTime = new Date(b.lastMessage?.[0]?.timestamp || 0);
+      return bTime - aTime;
     });
+    setMessages(sortedChats);
+  };
+
+  const handleNewMessage = (newMsg) => {
+    setMessages((prevMessages) => {
+      const updated = [...prevMessages];
+      const chatIndex = updated.findIndex(c => c.chatID === newMsg.chatID);
+
+      if (chatIndex !== -1) {
+        const chat = updated[chatIndex];
+        const oldMessages = chat.lastMessage || [];
+        const msgIndex = oldMessages.findIndex(
+          m => m.messageID === newMsg.messageID || m.tempID === newMsg.tempID
+        );
+
+        if (msgIndex !== -1) {
+          oldMessages[msgIndex] = { ...oldMessages[msgIndex], ...newMsg };
+        } else {
+          oldMessages.unshift({ ...newMsg, senderInfo: newMsg.senderInfo || {} });
+          chat.unreadCount = (chat.unreadCount || 0) + 1;
+        }
+
+        chat.lastMessage = oldMessages;
+      } else {
+        updated.unshift({
+          chatID: newMsg.chatID,
+          name: newMsg.senderInfo?.name || "Tin nhắn mới",
+          unreadCount: 1,
+          lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
+        });
+      }
+
+      return updated.sort((a, b) => {
+        const aTime = new Date(a.lastMessage?.[0]?.timestamp || 0);
+        const bTime = new Date(b.lastMessage?.[0]?.timestamp || 0);
+        return bTime - aTime;
+      });
+    });
+  };
+
+  const handleStatusUpdate = ({ chatID, userID, status }) => {
+    if (status === "read" && userID === user.userID) {
+      setMessages(prev =>
+        prev.map(chat =>
+          chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
+        )
+      );
+    }
+  };
+
+  const handleNewChat1to1 = (data) => {
+    console.log("📩 New 1-1 chat:", data);
+    setMessages(prev => [data, ...prev]);
+  };
+
+  const handleUpdateChat = (data) => {
+    console.log("📦 Update chat:", data);
+    setMessages((prev) => {
+      const chatIndex = prev.findIndex(chat => chat.chatID === data.chatID);
+      if (chatIndex !== -1) {
+        const updated = [...prev];
+        updated[chatIndex] = { ...updated[chatIndex], ...data };
+        return updated;
+      }
+      return [...prev, data];
+    });
+  };
+
+  // 👉 Connect
+  if (socket.connected) {
+    handleConnect();
+  } else {
+    socket.on("connect", handleConnect);
+  }
+
+  // 👉 Register listeners
+  socket.on("ChatByUserID", handleChatByUserID);
+  socket.on("new_message", handleNewMessage);
+  socket.on("unsend_notification", handleNewMessage);
+  socket.on("status_update_all", handleStatusUpdate);
+  socket.on("newChat1-1", handleNewChat1to1);
+  socket.on("updateChat", handleUpdateChat);
+
+  // 👉 Cleanup
+  return () => {
+    socket.off("connect", handleConnect);
+    socket.off("ChatByUserID", handleChatByUserID);
+    socket.off("new_message", handleNewMessage);
+    socket.off("unsend_notification", handleNewMessage);
+    socket.off("status_update_all", handleStatusUpdate);
+    socket.off("newChat1-1", handleNewChat1to1);
+    socket.off("updateChat", handleUpdateChat);
+  };
+}, [socket, user?.userID]);
+
+// useEffect(() => {
+//   if (!user?.userID) return;
+
+//   const handleChatByUserID = (data) => {
+//     const sortedChats = data.sort((a, b) => {
+//       const aTime = a.lastMessage?.[0]?.timestamp || 0;
+//       const bTime = b.lastMessage?.[0]?.timestamp || 0;
+//       return new Date(bTime) - new Date(aTime);
+//     });
+//     setMessages(sortedChats);
+//   };
+
+//   const handleNewMessage = (newMsg) => {
+//     setMessages((prevMessages) => {
+//       const updatedMessages = [...prevMessages];
+//       const chatIndex = updatedMessages.findIndex(c => c.chatID === newMsg.chatID);
+
+//       if (chatIndex !== -1) {
+//         const chat = updatedMessages[chatIndex];
+//         const oldMessages = chat.lastMessage || [];
+//         const msgIndex = oldMessages.findIndex(
+//           m => m.messageID === newMsg.messageID || m.tempID === newMsg.tempID
+//         );
+
+//         if (msgIndex !== -1) {
+//           oldMessages[msgIndex] = { ...oldMessages[msgIndex], ...newMsg };
+//         } else {
+//           oldMessages.unshift({ ...newMsg, senderInfo: newMsg.senderInfo || {} });
+//           chat.unreadCount = (chat.unreadCount || 0) + 1;
+//         }
+
+//         chat.lastMessage = oldMessages;
+//       } else {
+//         updatedMessages.unshift({
+//           chatID: newMsg.chatID,
+//           name: newMsg.senderInfo?.name || 'Tin nhắn mới',
+//           unreadCount: 1,
+//           lastMessage: [{ ...newMsg, senderInfo: newMsg.senderInfo || {} }],
+//         });
+//       }
+
+//       return updatedMessages.sort((a, b) => {
+//         const aTime = a.lastMessage?.[0]?.timestamp || 0;
+//         const bTime = b.lastMessage?.[0]?.timestamp || 0;
+//         return new Date(bTime) - new Date(aTime);
+//       });
+//     });
+//   };
+
+//   const handleStatusUpdate = ({ chatID, userID, status }) => {
+//     if (status === "read" && userID === user.userID) {
+//       setMessages((prevMessages) =>
+//         prevMessages.map(chat =>
+//           chat.chatID === chatID ? { ...chat, unreadCount: 0 } : chat
+//         )
+//       );
+//     }
+//   };
+
+//   const handleNewChat1to1 = (data) => {
+//     setMessages((prevMessages) => {
+//       const exists = prevMessages.some(chat => chat.chatID === data.chatID);
+//       if (exists) return prevMessages;
+//       return [data, ...prevMessages];
+//     });
+//   };
+
+//   const handleUpdateChat = (data) => {
+//     setMessages((prev) => {
+//       const chatIndex = prev.findIndex(chat => chat.chatID === data.chatID);
+//       if (chatIndex !== -1) {
+//         const updated = [...prev];
+//         updated[chatIndex] = { ...updated[chatIndex], ...data };
+//         return updated;
+//       }
+//       return [data, ...prev];
+//     });
+//   };
+
+//   const connectIfReady = () => {
+//     if (socket?.connected && user.userID) {
+//       socket.emit("join_user", user.userID);
+//       socket.emit("getChat", user.userID);
+//     } else {
+//       socket.once("connect", () => {
+//         socket.emit("join_user", user.userID);
+//         socket.emit("getChat", user.userID);
+//       });
+//     }
+//   };
+
+//   connectIfReady();
+
+//   socket.on("ChatByUserID", handleChatByUserID);
+//   socket.on("new_message", handleNewMessage);
+//   socket.on("status_update_all", handleStatusUpdate);
+//   socket.on("newChat1-1", handleNewChat1to1);
+//   socket.on("updateChat", handleUpdateChat);
+//   socket.on("unsend_notification", handleNewMessage);
+
+//   return () => {
+//     socket.off("ChatByUserID", handleChatByUserID);
+//     socket.off("new_message", handleNewMessage);
+//     socket.off("status_update_all", handleStatusUpdate);
+//     socket.off("newChat1-1", handleNewChat1to1);
+//     socket.off("updateChat", handleUpdateChat);
+//     socket.off("unsend_notification", handleNewMessage);
+//   };
+// }, [user?.userID]);
+
   
-    // Cleanup
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("ChatByUserID", handleChatByUserID);
-      socket.off("new_message", handleNewMessage);
-      socket.off("status_update_all", handleStatusUpdate);
-      socket.off("newChat1-1");
-      socket.emit("unsend_notification", handleNewMessage);
-    };
-  }, [socket, user?.userID]);
   
   
-  
+  console.log("Messages:", Messages);
 
   return (
     <View style={styles.container}>

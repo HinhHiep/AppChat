@@ -12,7 +12,7 @@ import InputDefault from '@/components/input/InputDefault';
 import { io } from 'socket.io-client';
 
 //const socket = io('https://cnm-service.onrender.com');
-const socket = io('http://192.168.1.110:5000');
+const socket = io('http://192.168.186.55:5000');
 
 const ChatScreen = () => {
 
@@ -30,8 +30,33 @@ const ChatScreen = () => {
   const [videos, setVideos] = useState([]);
   const [Video_Image,setVideo_Image] = useState(null);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [screens, setScreens] = useState('');
   const scrollContainerRef = useRef(null);
  console.log("item",item);
+  useEffect(() => {
+     const unsubscribe = navigation.addListener('focus', () => {
+       const routes = navigation.getState()?.routes;
+       const currentIndex = navigation.getState()?.index;
+       const prevScreen = routes[currentIndex - 1];
+       setScreens(prevScreen?.name);
+       console.log("📍 Màn trước là:", prevScreen?.name);
+     });
+      return unsubscribe;
+   }, [navigation]);
+   const handleScreenChange = () => {
+    if (screens === 'CreateGroupScreen'){
+      navigation.navigate("Home", { screen: "Tin Nhắn" });
+    } else{
+      navigation.goBack();
+    }
+   }
+   const handleOptionGroup = ()=>{
+    if(item.type === 'group'){
+      navigation.navigate('GroupOptionsScreen', { chat: item });
+    } else{
+      alert("Bạn không thể thực hiện chức năng này với chat 1-1");
+    }
+   } 
 
   const handleEmojiSelect = (emojiObject) => {
     // Lấy emoji từ emojiObject
@@ -253,11 +278,14 @@ const ChatScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => handleScreenChange()}>
           <Icon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Image source={{ uri: item.avatar || user?.anhDaiDien }} style={styles.avatarHeader} />
-        <Text style={styles.username}>{item?.name}</Text>
+        <View style={styles.groupInfo}>
+          <Text style={styles.groupName}>{item?.name}</Text>
+          <Text style={styles.memberCount}>{0} thành viên</Text>
+        </View>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionButton}>
             <Icon name="call" size={20} color="#00caff" />
@@ -267,7 +295,7 @@ const ChatScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('GroupOptionsScreen', { chatID: item.chatID })}
+            onPress={() => handleOptionGroup()}
           >
             <Icon name="ellipsis-vertical" size={20} color="#00caff" />
           </TouchableOpacity>
@@ -389,11 +417,44 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'gray',
-    padding: 10,
+    backgroundColor: 'gray', // hoặc màu header của bạn
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  avatarHeader: { width: 32, height: 32, borderRadius: 16, marginLeft: 10 },
-  username: { color: '#fff', fontSize: 18, marginLeft: 10, flex: 1 },
+  
+  avatarHeader: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginHorizontal: 10,
+  },
+  
+  groupInfo: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  
+  groupName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
+  memberCount: {
+    fontSize: 13,
+    color: '#dcdcdc',
+    marginTop: 2,
+  },
+  
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  actionButton: {
+    marginHorizontal: 6,
+  }, 
   icon: { marginLeft: 10 },
   chat: { padding: 10 },
   myMessageContainer: { 
@@ -448,16 +509,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,    // Giãn cách giữa các icon
   },
   statusText: { fontSize: 10, color: '#aaa', marginTop: 2, textAlign: 'right' },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionButton: {
-    backgroundColor: 'gray',
-    borderRadius: 20,
-    padding: 8,
-    marginLeft: 5,
-  }
+  
+  
 });
 
 export default ChatScreen;

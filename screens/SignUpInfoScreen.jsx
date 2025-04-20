@@ -3,22 +3,24 @@ import React, { useState ,useEffect} from "react";
 import LayoutDefault from "@/components/layout/LayoutDefault";
 import InputDefault from "@/components/input/InputDefault";
 import InputPhone from "@/components/input/InputPhone";
+import InputDate from "@/components/input/InputDate";
 import ButtonPrimary from "@/components/button/ButtonPrimary";
 import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "@/redux/slices/UserSlice";
 import { register } from "@/api/UserApi";
 import { useRoute } from '@react-navigation/native';
-import InputDate from "@/components/input/InputDate";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {
-  isValidSignUp
-} from "@/utilities/validateFunction";
 
 const SignUpInfoScreen = () => {
   const route = useRoute();
   const {email,sdt} = route.params ;
-  const [show, setShow] = useState(false);
+   useEffect(() => {
+       console.log('Email:', email);  // In ra email
+       console.log('Data:',sdt);    // In ra data
+     }, [email,sdt]);
+  const navigation = useNavigation();
+ // const route = navigation.getState().routes;
+ // const phoneNumber = route[route.length - 1].params.phoneNumber;
   const [name, setName] = useState("");
   const [birth, setBirth] = useState("");
   const [password, setPassword] = useState("");
@@ -28,52 +30,46 @@ const SignUpInfoScreen = () => {
    const { userNew } = useSelector((state) => state.user || {});
    console.log('userNew', userNew);
    const [ enabled, setEnabled]=useState(false);
-
-
-
-   useEffect(() => {
-       console.log('Email:', email);  // In ra email
-       console.log('Data:',sdt);    // In ra data
-     }, [email,sdt]);
-  const navigation = useNavigation();
- 
-
+  // console.log(phoneNumber);
   const handleSignUp = async () => {
-    try {
-      // name, ngaySinh, gioiTinh, matKhau, reMatKhau
-     const isValid = await isValidSignUp(name, birth, gender, password, rePassword);
-      if(isValid){
-        const res= await register(sdt, name, birth, password, email,gender);
-        if (res) {
-          alert("Đăng ký tài khoản thành công!");
-          console.log("phoneNumber", sdt);
-          navigation.navigate("Login", { phoneNumberParams:sdt });
-        } else {
-          alert("Đăng ký tài khoản không thành công!");
-        }
-      }
-    } catch (error) {
-      console.error("Lỗi đăng ký:", error);
+    if (!name || !birth || !email || !password || !rePassword) {
+      alert("Vui lòng nhập đầy đủ thông tin!");
+      return;
+    }
+  
+    if (password.length < 6) {
+      alert("Mật khẩu không hợp lệ!");
+      return;
+    }
+  
+    const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regexEmail.test(email)) {
+      alert("Email không hợp lệ!");
+      return;
+    }
+  
+    if (password !== rePassword) {
+      alert("Mật khẩu không khớp!");
+      return;
     }
 
   //  navigation.navigate("Login", { phoneNumberParams:sdt });
   
-    // try {
-    //   const res = await register(sdt, name, birth, password, email,gender);
-    //   if (res) {
-    //     alert("Đăng ký tài khoản thành công!");
-    //     console.log("phoneNumber", sdt);
-    //     navigation.navigate("Login", { phoneNumberParams:sdt });
-    //   } else {
-    //     alert("Đăng ký tài khoản không thành công!");
-    //   }
-    // } catch (err) {
-    //   console.error("Lỗi đăng ký:", err);
-    //   alert("Đã xảy ra lỗi khi đăng ký!");
-    // }
+    try {
+      const res = await register(sdt, name, birth, password, email,gender);
+      if (res) {
+        alert("Đăng ký tài khoản thành công!");
+        console.log("phoneNumber", sdt);
+        navigation.navigate("Login", { phoneNumberParams:sdt });
+      } else {
+        alert("Đăng ký tài khoản không thành công!");
+      }
+    } catch (err) {
+      console.error("Lỗi đăng ký:", err);
+      alert("Đã xảy ra lỗi khi đăng ký!");
+    }
   };
 
-  
 
   useEffect(() => {
         if (name.length > 0 && birth.length > 0 && password.length >= 6 && rePassword.length > 0) {
@@ -83,11 +79,6 @@ const SignUpInfoScreen = () => {
         }
   
     }, [name, birth,password, rePassword]);
-
-  const dateHandler = ()=> {
-    setShow(!show);
-    console.log("show",show);
-  }
   
 
   return (
@@ -95,47 +86,20 @@ const SignUpInfoScreen = () => {
       <ScrollView>
       <InputDefault 
         placeholder="Tên hiển thị" 
-        iconLeft={"person"}
+        iconLeft="person" 
         onChangeText={(text) => setName(text)}
         value={name}
         underlineColorAndroid="transparent"
          autoCapitalize="none"
       />
-
-      
-      <InputDate
-      show={show}
-      onPress={() => dateHandler()}
-      value={birth}
-      onChangeText={(text) => setBirth(text)}
+      <InputDate 
+        placeholder="Ngày sinh dạng dd/mm/yyyy"
+        iconLeft="calendar" 
+        onChangeText={(text) => setBirth(text)}
+        value={birth}
+        underlineColorAndroid="transparent"
+         autoCapitalize="none"
       />
-
-      {show && (
-        <DateTimePicker
-          value={ new Date()}
-          mode="date"
-          display="default"
-
-          // set năm tối thiểu là ngày truớc đó 18 năm
-          maximumDate={new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
-          
-          onChange={(event, selectedDate) => {
-            const currentDate = selectedDate || birth;
-            setShow(false);
-            // Định dạng ngày tháng năm theo định dạng Việt Nam dd/MM/yyyy
-            const day = currentDate.getDate().toString().padStart(2, '0');
-            const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-            const year = currentDate.getFullYear();
-            const formattedDate = `${day}/${month}/${year}`;
-            setBirth(formattedDate);
-          }
-        }
-        />
-      )}
-
-     
-
-
       <View style={styles.genderContainer}>
       <Text style={styles.label}>Giới tính</Text>
       <View style={styles.genderOptions}>

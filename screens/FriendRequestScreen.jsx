@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import axios from "axios";
 import { io } from "socket.io-client"; // Import socket.io-client
 
-const socket = io("http://192.168.1.110:5000"); // Kết nối với server socket
+const socket = io("http://localhost:5000"); // Kết nối với server socket
 
 const FriendRequestScreen = () => {
   const { user } = useSelector((state) => state.user);
@@ -21,17 +21,15 @@ const FriendRequestScreen = () => {
     }
     
     // Đăng ký số điện thoại của người dùng khi kết nối socket
-      socket.emit("join_user", user.userID);
+    socket.emit("join_user", user.userID);
     // Gửi yêu cầu lấy danh sách yêu cầu kết bạn từ server qua socket
     socket.emit("get_pending_friend_requests", user.userID);
-    
+
     // Lắng nghe sự kiện "pending_friend_requests" để cập nhật danh sách yêu cầu kết bạn
     socket.on("pending_friend_requests", (friendRequests) => {
-      setReceivedRequests(friendRequests.receivedRequests || []); // Cập nhật danh sách yêu cầu đã nhận
-      setSentRequests(friendRequests.sentRequests || []); // Cập nhật danh sách yêu cầu đã gửi
-      console.log("Danh sách yêu cầu kết bạn:", friendRequests);
-      console.log("Danh sách yêu cầu đã gửi:",receivedRequests);
-      console.log("Danh sách yêu cầu đã gửi:",sentRequests);
+      setReceivedRequests(friendRequests.receivedRequests); // Cập nhật danh sách yêu cầu kết bạn
+      setSentRequests(friendRequests.sentRequests); // Cập nhật danh sách yêu cầu đã gửi
+     
     });
 
     socket.on('new_friend_request', (data) => {
@@ -42,20 +40,38 @@ const FriendRequestScreen = () => {
       setSentRequests((prevRequests) => [...prevRequests, data]); // Cập nhật danh sách yêu cầu đã gửi
       console.log("Yêu cầu kết bạn đã gửi:", data);
     });
-    socket.on("friend_request_accepted", (data) => {
 
+    socket.on("friend_request_accepted", (data) => {
       if(data.status ==="accepted"){
         console.log("Yêu cầu kết bạn đã được chấp nhận:", data);
         setReceivedRequests((prevRequests) => prevRequests.filter(req => req.contactID !== data.userID)); // Xóa yêu cầu đã chấp nhận
-        
       }
 
     });
+    socket.on("friend_request_accepted", (data) => {
+      if (data.status === "accepted") {
+        console.log("Yêu cầu kết bạn đã được chấp nhận:", data);
+        setSentRequests((prevRequests) => prevRequests.filter(req => req.userID !== data.recipientID)); // Xóa yêu cầu đã chấp nhận
+      }
+    });
+    socket.on("friend_request_rejected", (data) => {
+      if (data.status === "rejected") {
+        console.log("Yêu cầu kết bạn đã bị từ chối:", data);
+        setReceivedRequests((prevRequests) => prevRequests.filter(req => req.contactID !== data.userID)); // Xóa yêu cầu đã từ chối
+        
+      }
+    });
+    socket.on("friend_request_rejected", (data) => {
+      if (data.status === "rejected") {
+        console.log("Yêu cầu kết bạn đã bị từ chối:", data);
+        setSentRequests((prevRequests) => prevRequests.filter(req => req.userID !== data.recipientID)); // Xóa yêu cầu đã từ chối
+      }
+    });
+
     // Lắng nghe sự kiện lỗi
     socket.on("error", (error) => {
      // setErrorMessage(error.message || "Lỗi khi lấy yêu cầu kết bạn.");
-     // setIsLoading(false);
-      console.error("Lỗi:", error.message);
+      console.error("Lỗi:", error.message || "Lỗi khi lấy yêu cầu kết bạn.");
     });
 
     // Dọn dẹp sự kiện khi component unmount
@@ -63,10 +79,14 @@ const FriendRequestScreen = () => {
       socket.off("pending_friend_requests");
       socket.off("new_friend_request");
       socket.off("friend_request_accepted");
+      socket.off("friend_request_accepted");
       socket.off('friend_request_sent');
+      socket.off("friend_request_rejected");
+      socket.off("friend_request_rejected");
       socket.off("error");
     };
-  }, [user]); // Khi user thay đổi, gọi lại yêu cầu lấy yêu cầu kết bạn      // Để chuyển giữa 2 tab
+  }, [user]); // Khi user thay đổi, gọi lại yêu cầu lấy yêu cầu kết bạn
+
   const handleAccept = async (item) => {
         console.log("Chấp nhận yêu cầu kết bạn:", item.contactID);
         console.log("Chấp nhận yêu cầu kết bạn:", item.userID);
@@ -81,10 +101,14 @@ const FriendRequestScreen = () => {
         });
   };
 
-  const handleReject = async (requestID) => {
-    // Fake xử lý reject
-    setReceivedRequests(prev => prev.filter(req => req.userID === requestID));
-  };
+  const handleRejectRequest = async (item) => {
+    socket.emit("reject_friend_request", {
+      senderID: item.contactID,
+      recipientID: user.userID,
+      senderName: item.name,
+      senderImage: item.avatar,
+    });
+};
 
   const renderItem = ({ item, type }) => (
     <View style={styles.itemContainer}>
@@ -101,7 +125,7 @@ const FriendRequestScreen = () => {
                 {/* <Icon name="checkmark" size={18} color="#fff" /> */}
                 <Text style={{ color: '#fff' }}>Chấp nhận</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(item.userID)}>
+              <TouchableOpacity style={styles.rejectButton} onPress={() => handleRejectRequest(item)}>
                 {/* <Icon name="close" size={18} color="#fff" /> */}
                 <Text style={{ color: '#fff' }}>Từ chối</Text>
               </TouchableOpacity>
