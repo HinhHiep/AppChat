@@ -8,7 +8,7 @@ import SearchBar from '../screens/SearchBar'; // Assuming you have a SearchBar c
 
 
 //const socket = io('https://cnm-service.onrender.com');
-const socket = io("http://192.168.186.55:5000"); // Kết nối với server socket
+const socket = io("http://192.168.1.24:5000"); // Kết nối với server socket
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -114,7 +114,7 @@ const ContactsScreen = () => {
         navigation.navigate('ChatScreen', { item: chat });
       } else {
         // Nếu chưa có, tạo chat mới
-        const createResponse = await fetch("http://192.168.1.38:5000/api/createChat1-1", {
+        const createResponse = await fetch("http://192.168.1.24:5000/api/createChat1-1", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

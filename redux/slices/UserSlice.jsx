@@ -3,7 +3,7 @@ import { createSlice
  } from "@reduxjs/toolkit";
 
 import { login
-, register 
+, register ,updateStatus,updateUserProfile
 } from "../../api/UserApi";
 
 
@@ -15,15 +15,18 @@ const initialState = {
 };
 export const loginUser = createAsyncThunk(
   "user/loginUser",
-  async ({ username, password }) => {
-    const response = await login(username, password);
-    if (response.error) {
-      throw new Error(response.error);
+  async ({ username, password }, { rejectWithValue }) => {
+    try {
+      const response = await login(username, password); // đã throw nếu có lỗi rồi
+      const res = await updateStatus(response.user.userID,"online");
+      return res.user; // Trả user nếu thành công
+    } catch (error) {
+      console.error("LoginUser error:", error);
+      return rejectWithValue(error.message); // dùng rejectWithValue để xử lý ở reducer
     }
-    console.log("Login successful:", response.user);
-    return response.user
   }
 );
+
 
 // sdt, name, ngaySinh, matKhau,emai
 
@@ -41,6 +44,19 @@ export const changePass = createAsyncThunk(
   async ({ phoneNumber, newPassword }) => {
     const response = await changePass(phoneNumber,newPassword);
     return response.data;
+  }
+);
+
+// update user 
+export const updateUser = createAsyncThunk(
+  "user/updateUser",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await updateUserProfile(userData);
+      return response; // giả sử API trả về user mới
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
   }
 );
 const userSlice = createSlice({
@@ -94,6 +110,19 @@ const userSlice = createSlice({
             state.loading = false;
             state.error = action.error.message;
         });
+    builder
+  .addCase(updateUser.pending, (state) => {
+    state.loading = true;
+    state.error = null;
+  })
+  .addCase(updateUser.fulfilled, (state, action) => {
+    state.loading = false;
+    state.user = action.payload; // cập nhật user mới
+  })
+  .addCase(updateUser.rejected, (state, action) => {
+    state.loading = false;
+    state.error = action.payload || action.error.message;
+  });
   },
 });
 

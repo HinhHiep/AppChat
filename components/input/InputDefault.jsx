@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  
 } from "react-native";
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,8 +15,7 @@ const InputDefault = ({
   onChangeText ,
   keyboardTypeNumeric = false,
   value = "",
-  onBlur,
-  maxLength=1000
+
 }) => {
     const [showPass, setShowPass] = useState(false)
     const [text, setText] = useState("")
@@ -48,10 +46,7 @@ const InputDefault = ({
             keyboardType={
               keyboardTypeNumeric == true ? 'numeric': 'default'
             }
-          // Kiểm tra khi rời khỏi TextInput
-          onBlur={onBlur}
-          // Giới hạn độ dài tối đa của TextInput
-          maxLength={maxLength}
+          
         />
       </View>
       {iconRight && (

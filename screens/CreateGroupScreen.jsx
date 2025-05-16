@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
-const socket = io("http://192.168.186.55:5000");
+const socket = io("http://192.168.1.24:5000");
 //const socket = io('https://cnm-service.onrender.com');
 
 const CreateGroupScreen = () => {
@@ -196,13 +196,13 @@ const CreateGroupScreen = () => {
       </View>
 
       {/* Avatar + Group Name */}
-      <TouchableOpacity style={styles.avatarPicker} onPress={pickGroupAvatar}>
+      {/* <TouchableOpacity style={styles.avatarPicker} onPress={pickGroupAvatar}>
         <Image
           source={{ uri: groupAvatar || 'https://i.pravatar.cc/100?u=group' }}
           style={styles.groupAvatar}
         />
         <Text style={styles.changeAvatarText}>Chọn ảnh nhóm</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <TextInput
         style={styles.input}

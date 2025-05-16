@@ -1,6 +1,5 @@
 // sdt, matKhau
 import axios from "axios";
-import { Alert } from "react-native";
 export const login = async (username, password) => {
     if (!username || !password) {
         throw new Error("Username and password are required");
@@ -34,6 +33,29 @@ export const login = async (username, password) => {
     throw error;
   }
 };
+// doi trang thai
+export const updateStatus = async (userID, status) => {
+  try {
+    const response = await fetch("https://echoapp-rho.vercel.app/api/updateStatus", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userID,
+        trangThai:status,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error during updateStatus:", error);
+    throw error;
+  }
+};
 // sdt, name, ngaySinh, matKhau,email
 export const register = async (phoneNumber, name, birth,password,email,gender) => {
   try {
@@ -52,7 +74,7 @@ export const register = async (phoneNumber, name, birth,password,email,gender) =
       }),
     });
     if (!response.ok) {
-      Alert.alert("Đăng ký không thành công !");
+      throw new Error("Network response was not ok");
     }
     const data = await response.json();
     return data;
@@ -109,6 +131,31 @@ export const checkGmail = async (email) =>{
   });
   return responseEmail; // Trả về dữ liệu từ phản hồi
 }
+export const updateUserProfile = async (userData) => {
+  try {
+    const response = await fetch(`http://172.16.1.212:5000/api/users/${userData.userID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const message = data?.error || 'Có lỗi xảy ra trong quá trình cập nhật';
+      Alert.alert('Lỗi', message);
+      return null;
+    }
+
+    return data.user;
+  } catch (error) {
+    console.error('Lỗi khi gửi yêu cầu:', error);
+    Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ.');
+    return null;
+  }
+};
 
 export const checkSDT = async (sdt) =>{
   const responseEmail = await axios.post('https://echoapp-rho.vercel.app/api/users/checksdt', 
@@ -122,7 +169,7 @@ export const checkSDT = async (sdt) =>{
 
 export const getChatsForUser = async (userID) => {
   try {
-    const response = await fetch('http://192.168.1.23:5000/api/chats/userID', {
+    const response = await fetch('https://echoapp-rho.vercel.app/api/chats/userID', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,7 +191,7 @@ export const getChatsForUser = async (userID) => {
 
 export const createChatID = async (newMsg) => {
   try {
-    const response = await fetch('http://192.168.1.23:5000/api/creatmsg/chatID', {
+    const response = await fetch('https://echoapp-rho.vercel.app/api/creatmsg/chatID', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

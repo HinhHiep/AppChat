@@ -6,7 +6,7 @@ import InputPhone from '@/components/input/InputPhone';
 import { useSelector } from 'react-redux';
 import { io } from "socket.io-client"; // Import socket.io-client
 
-const socket = io("http://localhost:5000");  // Kết nối đến server socket
+const socket = io("http://192.168.1.24:5000");  // Kết nối đến server socket
 const SearchFriendByPhoneScreen = ({ navigation }) => {
   const { user } = useSelector((state) => state.user);
   const [phone, setPhone] = useState('');

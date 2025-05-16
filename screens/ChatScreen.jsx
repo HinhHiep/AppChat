@@ -10,9 +10,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import InputDefault from '@/components/input/InputDefault';
 import { io } from 'socket.io-client';
-
+import EmojiSelector from 'react-native-emoji-selector';
+import axios from "axios";
+import { setUser } from "@/redux/slices/UserSlice";
+import { useDispatch } from "react-redux";
 //const socket = io('https://cnm-service.onrender.com');
-const socket = io('http://192.168.186.55:5000');
+const socket = io('http://172.16.1.212:5000');
 
 const ChatScreen = () => {
 
@@ -32,7 +35,34 @@ const ChatScreen = () => {
   const [visibleCount, setVisibleCount] = useState(10);
   const [screens, setScreens] = useState('');
   const scrollContainerRef = useRef(null);
+  const [length, setLength] = useState(item?.members.length || 0);
+  const [emoji, setEmoji] = useState('');
+  const dispatch = useDispatch();
  console.log("item",item);
+ const [member, setMember] = useState(null);
+ 
+  const handleMember = async(memberID)=>{
+    try{
+        const res = await axios.post("http://172.16.1.212:5000/api/usersID", {
+          userID: memberID
+        });
+          console.log("Member data:", res.data);
+          setMember(res.data);
+      }
+      catch (error) {
+        console.error("Error fetching member data:", error);
+      }
+  }
+
+  useEffect(() => {
+    if (!item || item.type !== "private") return;
+    const memberID = item.members.find((m) => m.userID !== user.userID)?.userID;
+    console.log("memberID", memberID);
+    if (memberID) {
+      handleMember(memberID);
+    }
+  }, [item]);
+  console.log("member",member);
   useEffect(() => {
      const unsubscribe = navigation.addListener('focus', () => {
        const routes = navigation.getState()?.routes;
@@ -57,6 +87,28 @@ const ChatScreen = () => {
       alert("Bạn không thể thực hiện chức năng này với chat 1-1");
     }
    } 
+   const pickImage = async () => {
+  // Xin quyền truy cập thư viện
+  const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!granted) {
+    alert('Bạn cần cấp quyền truy cập ảnh');
+    return;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.All, // chọn ảnh và video
+    allowsMultipleSelection: true,  // ✅ cho phép chọn nhiều
+    quality: 1,
+  });
+
+  if (!result.canceled) {
+    // result.assets là mảng các file đã chọn
+    const selectedImages = result.assets.filter(asset => asset.type === "image");
+    const selectedVideos = result.assets.filter(asset => asset.type === "video");
+    setVideos(selectedVideos);
+    setImages(selectedImages);
+  }
+};
 
   const handleEmojiSelect = (emojiObject) => {
     // Lấy emoji từ emojiObject
@@ -136,6 +188,7 @@ const ChatScreen = () => {
 
   useEffect(() => {
     socket.emit('join_chat', item.chatID);
+    socket.emit('join_user', user.userID);
 
     const handleNewMessage = (data) => {
       setMessage((prev) => {
@@ -167,7 +220,6 @@ const ChatScreen = () => {
     socket.on(item.chatID, handleNewMessage);
     socket.on(`status_update_${item.chatID}`, handleStatusUpdate);
     socket.on(`unsend_${item.chatID}`, handleUnsendMessage);
-
     socket.on("unsend_notification", (updatedMessage) => {
       setMessage(prevMessages =>
         prevMessages.map(m =>
@@ -176,12 +228,67 @@ const ChatScreen = () => {
       );
           console.log('Received unsend notification:', updatedMessage);
     });
+    socket.on("newMember", (data) => {
+      setLength(data.length);
+    });
+    socket.on("outMember", (data) => {
+      setLength(data.length);
+    });
+    socket.on("outMemberr", (data) => {
+      setLength(data.length);
+    });
+    socket.on("status_update",(data) => {
+      setMember(data);
+    });
+    
+    socket.on("updatee_user", (updatedUser) => {
+      setMember(updatedUser);
+  setMessage((prevMessages) =>
+    prevMessages.map((msg) => {
+      if (msg.senderID === updatedUser.userID) {
+        return {
+          ...msg,
+          senderInfo: {
+            ...msg.senderInfo,
+            name: updatedUser.name,
+            avatar: updatedUser.anhDaiDien,
+          },
+        };
+      }
+      return msg;
+    })
+  );
+});
+socket.on("update_user", (updatedUser) => {  
+  dispatch(setUser(updatedUser));
+    setMessage((prevMessages) =>
+      prevMessages.map((msg) => {
+        if (msg.senderID === updatedUser.userID) {
+          return {
+            ...msg,
+            senderInfo: {
+              ...msg.senderInfo,
+              name: updatedUser.name,
+              avatar: updatedUser.anhDaiDien,
+            },
+          };
+        }
+        return msg;
+      })
+    );
+  });
 
     return () => {
       socket.off(item.chatID, handleNewMessage);
       socket.off(`status_update_${item.chatID}`, handleStatusUpdate);
       socket.off(`unsend_${item.chatID}`, handleUnsendMessage);
       socket.off('unsend_notification');
+      socket.off("newMember");
+      socket.off("outMember");
+      socket.off("outMemberr");
+      socket.off("status_update");
+      socket.off("update_user");
+      socket.off("updatee_user");
     };
   }, [item.chatID, user.userID]);
 
@@ -281,10 +388,10 @@ const ChatScreen = () => {
         <TouchableOpacity onPress={() => handleScreenChange()}>
           <Icon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Image source={{ uri: item.avatar || user?.anhDaiDien }} style={styles.avatarHeader} />
+        <Image source={{uri:item.type ==="group" ? item.avatar : member?.anhDaiDien }} style={styles.avatarHeader} />
         <View style={styles.groupInfo}>
           <Text style={styles.groupName}>{item?.name}</Text>
-          <Text style={styles.memberCount}>{0} thành viên</Text>
+         {item.type === "group" ? (<Text style={styles.memberCount}>{length} thành viên</Text>) : (<Text style={styles.memberCount}>{member?.trangThai}</Text>)}
         </View>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionButton}>
@@ -371,7 +478,8 @@ const ChatScreen = () => {
           })}
         </ScrollView>
       )}
- {showEmojiPicker && (<Picker onEmojiSelect={handleEmojiSelect} />)}
+ {/* {showEmojiPicker && (<Picker onEmojiSelect={handleEmojiSelect} />)} */}
+      { showEmojiPicker && (<EmojiBoard onSelect={(emoji) => setEmoji(emoji)} />)}
 <View style={styles.inputBar}>
   <InputDefault
     placeholder="Tin nhắn"
@@ -379,13 +487,12 @@ const ChatScreen = () => {
     onChangeText={setMessages}
     style={styles.input}
   />
-  
-  <TouchableOpacity onPress={() => Keyboard.dismiss() || setShowEmojiPicker(!showEmojiPicker)}>
+  {/* () => Keyboard.dismiss() || setShowEmojiPicker(!showEmojiPicker) */}
+  <TouchableOpacity onPress={()=>setShowEmojiPicker(true)} >
     <Icon name="happy-outline" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
-       
- 
-  <TouchableOpacity onPress={() => setShowGallery(!showGallery)}>
+  {/* onPress={() => setShowGallery(!showGallery)} */}
+  <TouchableOpacity onPress={pickImage}>
     <Icon name="image" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
   { videos.length ===0 && (
@@ -398,7 +505,6 @@ const ChatScreen = () => {
     <FAIcon name="save" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
   )}
-  
   {selected.length > 0 && (
     <TouchableOpacity onPress={sendSelectedImages}>
       <Icon name="cloud-upload-outline" size={22} color="#00ff88" style={styles.icon} />

@@ -8,6 +8,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { UserApi } from "@/api/UserApi";
 import { loginUser } from "@/redux/slices/UserSlice";
 import { CommonActions } from '@react-navigation/native';
+import axios from "axios";
+import { io } from "socket.io-client";
+
+const socket = io("http://192.168.1.24:5000");
 const LoginScreen = ({route}) => {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -43,6 +47,7 @@ const LoginScreen = ({route}) => {
       .unwrap()
       .then((user) => {
         console.log("Đăng nhập thành công:", user);
+        socket.emit("updateStatus",user);
         navigation.navigate("Home")
       })
       .catch((error) => {

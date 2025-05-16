@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import axios from "axios";
 import { io } from "socket.io-client"; // Import socket.io-client
 
-const socket = io("http://localhost:5000"); // Kết nối với server socket
+const socket = io("http://192.168.1.43:5000"); // Kết nối với server socket
 
 const FriendRequestScreen = () => {
   const { user } = useSelector((state) => state.user);

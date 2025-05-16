@@ -109,7 +109,7 @@ const handleSelectMultipleImages = async () => {
   
       console.log('📤 Form data:', formData);
   
-      const response = await fetch("http://192.168.1.23:5000/api/upload", {
+      const response = await fetch("http://192.168.1.25:5000/api/upload", {
         method: "POST",
         headers: {
           "Content-Type": "multipart/form-data",

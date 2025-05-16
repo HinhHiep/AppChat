@@ -17,6 +17,25 @@ npm install expo-document-picker
 npm install react-native-image-crop-picker
 npm install react-native-image-picker
 npx expo install expo-media-library
+npm install react-native-modal
+npm install react-native-emoji-selector@latest
+npm install emoji-mart-native
+npm install react-native-svg
+npm install react-native-modal
+npx expo install react-native-svg
+npm install socket.io-client
+expo install expo-av
+
+npm install react-native-video
+npm install emoji-mart-native
+
+
+
+
+
+
+
+
 
 
 

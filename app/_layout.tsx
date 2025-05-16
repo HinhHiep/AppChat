@@ -11,8 +11,15 @@ import VetifiOtpQMK from "../screens/VetifiOtpQMK";
 import  BottomTabBar  from '@/components/bottomtab/BottomTab';
 import  ProfileScreen  from "../screens/ProfileScreen";
 import ChatScreen from "../screens/ChatScreen";
+import  FullImageScreen from '../screens/FullImageScreen';
 import { Provider } from 'react-redux'
 import  store  from '../redux/store'
+import FriendRequestScreen from "@/screens/FriendRequestScreen";
+import  SearchBar from "@/screens/SearchBar";
+import SearchFriendByPhoneScreen from "@/screens/SearchFriendByPhoneScreen";
+import CreateGroupScreen from "@/screens/CreateGroupScreen";
+import GroupOptionsScreen from '@/screens/GroupOptionsScreen';
+
  
 const Stack = createNativeStackNavigator();
 export const AppLayout = () => {
@@ -34,6 +41,12 @@ export const AppLayout = () => {
       <Stack.Screen name = "VetifiOtpQMK" component={VetifiOtpQMK} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="ChatScreen" component={ChatScreen} />
+      <Stack.Screen name="FullImageScreen" component={FullImageScreen} />
+      <Stack.Screen name="FriendRequestScreen" component={FriendRequestScreen} />
+      <Stack.Screen name="SearchBar" component={SearchBar} />
+      <Stack.Screen name="SearchFriendByPhoneScreen" component={SearchFriendByPhoneScreen} />
+      <Stack.Screen name="CreateGroupScreen" component={CreateGroupScreen} />
+      <Stack.Screen name="GroupOptionsScreen" component={GroupOptionsScreen} />
     </Stack.Navigator>
     </Provider>
   );
