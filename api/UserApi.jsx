@@ -6,7 +6,7 @@ export const login = async (username, password) => {
     }
     console.log("Login function called with:", username, password);
   try {
-    const response = await fetch("https://echoapp-rho.vercel.app/api/login", {
+    const response = await fetch("https://cnm-service.onrender.com/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,7 +36,7 @@ export const login = async (username, password) => {
 // doi trang thai
 export const updateStatus = async (userID, status) => {
   try {
-    const response = await fetch("https://echoapp-rho.vercel.app/api/updateStatus", {
+    const response = await fetch("https://cnm-service.onrender.com/api/updateStatus", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,7 +59,7 @@ export const updateStatus = async (userID, status) => {
 // sdt, name, ngaySinh, matKhau,email
 export const register = async (phoneNumber, name, birth,password,email,gender) => {
   try {
-    const response = await fetch("https://echoapp-rho.vercel.app/api/registerUser", {
+    const response = await fetch("https://cnm-service.onrender.com/api/registerUser", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -87,7 +87,7 @@ export const register = async (phoneNumber, name, birth,password,email,gender) =
 export const changePass = async (sdt,matKhau) => {
     try {
       const response = await axios.post(
-        "https://echoapp-rho.vercel.app/api/users/doimatkhau",
+        "https://cnm-service.onrender.com/api/users/doimatkhau",
         {sdt, matKhau }, // Thêm email và sdt vào payload
         { headers: { "Content-Type": "application/json" } }
       ).catch((err) => {
@@ -102,7 +102,7 @@ export const changePass = async (sdt,matKhau) => {
     }
 export const getOTP = async (email) =>{
   try {
-    const response = await fetch("https://echoapp-rho.vercel.app/api/send-otp", {
+    const response = await fetch("https://cnm-service.onrender.com/api/send-otp", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -123,7 +123,7 @@ export const getOTP = async (email) =>{
 }
 }
 export const checkGmail = async (email) =>{
-  const responseEmail = await axios.post('https://echoapp-rho.vercel.app/api/users/email', 
+  const responseEmail = await axios.post('https://cnm-service.onrender.com/api/users/email', 
     { email },
     { headers: { 'Content-Type': 'application/json' } }
   ).catch(err => {
@@ -133,7 +133,7 @@ export const checkGmail = async (email) =>{
 }
 export const updateUserProfile = async (userData) => {
   try {
-    const response = await fetch(`http://172.16.1.212:5000/api/users/${userData.userID}`, {
+    const response = await fetch(`https://cnm-service.onrender.com/api/users/${userData.userID}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ export const updateUserProfile = async (userData) => {
 };
 
 export const checkSDT = async (sdt) =>{
-  const responseEmail = await axios.post('https://echoapp-rho.vercel.app/api/users/checksdt', 
+  const responseEmail = await axios.post('https://cnm-service.onrender.com/api/users/checksdt', 
     { sdt },
     { headers: { 'Content-Type': 'application/json' } }
   ).catch(err => {
@@ -169,7 +169,7 @@ export const checkSDT = async (sdt) =>{
 
 export const getChatsForUser = async (userID) => {
   try {
-    const response = await fetch('https://echoapp-rho.vercel.app/api/chats/userID', {
+    const response = await fetch('https://cnm-service.onrender.com/api/chats/userID', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -191,7 +191,7 @@ export const getChatsForUser = async (userID) => {
 
 export const createChatID = async (newMsg) => {
   try {
-    const response = await fetch('https://echoapp-rho.vercel.app/api/creatmsg/chatID', {
+    const response = await fetch('https://cnm-service.onrender.com/api/creatmsg/chatID', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

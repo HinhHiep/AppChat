@@ -14,20 +14,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
-const socket = io("http://192.168.1.24:5000");
-//const socket = io('https://cnm-service.onrender.com');
+//const socket = io("http://192.168.1.110:5000");
+const socket = io('https://cnm-service.onrender.com');
 
 const CreateGroupScreen = () => {
   const navigation = useNavigation();
   const { user } = useSelector((state) => state.user);
 
   const [groupName, setGroupName] = useState('');
-  const [groupAvatar, setGroupAvatar] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [friendsFromServer, setFriendsFromServer] = useState([]);
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [file, setFile] = useState(null);
+  const [fileavatar, setFileAvatar] = useState(null);
+
    useEffect(() => {
         if (socket && user?.userID) {
           socket.emit("join_user", user.userID);
@@ -39,7 +41,7 @@ const CreateGroupScreen = () => {
     try {
       console.log("🔄 Fetching friends list with userID:", user?.userID);
 
-      const response = await fetch("https://echoapp-rho.vercel.app/api/ContacsFriendByUserID", {
+      const response = await fetch("https://cnm-service.onrender.com/api/ContacsFriendByUserID", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userID: user.userID }),
@@ -78,35 +80,47 @@ const CreateGroupScreen = () => {
     }
   };
 
-  // 📸 Chọn ảnh nhóm
-  const pickGroupAvatar = async () => {
-    // Yêu cầu quyền truy cập thư viện
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Bạn cần cấp quyền truy cập thư viện ảnh để chọn ảnh nhóm!');
-      return;
-    }
+  // Hàm chọn ảnh (avatar hoặc cover)
+    const pickImage = async () => {
+      try {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Lỗi', 'Bạn cần cấp quyền truy cập ảnh.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 1,
+          allowsEditing: true,
+          aspect: [1, 1]
+        });
   
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1], // Cắt ảnh vuông nếu muốn avatar vuông
-        quality: 0.5,
-        base64: false
-      });
-  
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const image = result.assets[0];
-        setGroupAvatar(image.uri);
-        setFile(image); // lưu để upload
-        console.log('📸 Chosen group avatar:', image);
+        if (!result.canceled) {
+          const uri = result.assets[0].uri;
+            setFileAvatar(result.assets[0].uri);
+            setFile(result.assets[0]);
+        }
+      } catch (error) {
+        Alert.alert('Lỗi', 'Không thể mở thư viện ảnh.');
       }
-    } catch (error) {
-      console.error('❌ Error picking image:', error);
-    }
-  };
-  
+    };
+  const uploadImage = async () => {
+  const imageForm = new FormData();
+  imageForm.append("files", {
+    uri: file.uri,
+    type: file.mimeType || "image/jpeg",
+    name: file.fileName || "photo.jpg",
+  });
+
+  const res = await fetch("https://cnm-service.onrender.com/api/upload", {
+    method: "POST",
+    body: imageForm,
+    // ❌ Không đặt Content-Type ở đây
+  });
+
+  const data = await res.json();
+  return data?.urls?.[0] || "";
+};
 
   // 🛠 Tạo nhóm
   const handleCreateGroup =async () => {
@@ -118,54 +132,26 @@ const CreateGroupScreen = () => {
       alert("Vui lòng nhập tên nhóm.");
       return;
     }
+    if (file) {
+      const url = await uploadImage();
+      setFileAvatar(url);
+    } else{
+      alert("Vui lòng chọn ảnh nhóm.");
+      return;
+    }
     const members = [];
     selectedFriends.forEach(friend => {
       members.push({ userID: friend.userID});
     });
-  //   if (!file) {
-  //     Alert.alert("Vui lòng chọn ảnh nhóm trước khi tạo nhóm!");
-  //     return;
-  //   }
-  //   const imageForm = new FormData();
-  //   console.log("📸 Uploading image:", file);
-  //   const fileExtension = file.uri.split('.').pop() || 'jpg';
-  //   const fileType = file.type || `image/${fileExtension}`;
-  //   const fileName = file.fileName || `upload.${fileExtension}`;
-
-  //     imageForm.append("files", {
-  //       uri: file.uri,
-  //       name: fileName,
-  //       type: fileType,
-  //     });
-
        try {
-  //       const res = await fetch("http://192.168.31.150:5000/api/upload", {
-  //         method: "POST",
-  //         body: imageForm,
-  //         // ❗ Không set headers Content-Type thủ công
-  //       });
-
-  // if (!res.ok) {
-  //   const errText = await res.text();
-  //   console.error("❌ Upload failed:", errText);
-  //   return;
-  // }
-
-  // const link = await res.json();
-  // console.log("📦 Image upload response:", link.urls);
-
-  // if (!link?.urls?.length) {
-  //   console.error("❌ No image URLs returned.");
-  //   return;
-  // }
     const data = {
       adminID: user.userID,
       name: groupName,
       members: members,
-      avatar:"https://cdn-icons-png.flaticon.com/512/9131/9131529.png",
+      avatar: fileavatar,
     };
 
-    const response = await fetch("https://echoapp-rho.vercel.app/api/createGroupChat", {
+    const response = await fetch("https://cnm-service.onrender.com/api/createGroupChat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data} ),
@@ -196,13 +182,13 @@ const CreateGroupScreen = () => {
       </View>
 
       {/* Avatar + Group Name */}
-      {/* <TouchableOpacity style={styles.avatarPicker} onPress={pickGroupAvatar}>
+      <TouchableOpacity style={styles.avatarPicker} onPress={pickImage}>
         <Image
-          source={{ uri: groupAvatar || 'https://i.pravatar.cc/100?u=group' }}
+          source={{ uri: fileavatar || 'https://i.pravatar.cc/100?u=group' }}
           style={styles.groupAvatar}
         />
         <Text style={styles.changeAvatarText}>Chọn ảnh nhóm</Text>
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
       <TextInput
         style={styles.input}

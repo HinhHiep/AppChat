@@ -6,7 +6,8 @@ import InputPhone from '@/components/input/InputPhone';
 import { useSelector } from 'react-redux';
 import { io } from "socket.io-client"; // Import socket.io-client
 
-const socket = io("http://192.168.1.24:5000");  // Kết nối đến server socket
+//const socket = io("http://192.168.1.110:5000");  // Kết nối đến server socket
+const socket = io('https://cnm-service.onrender.com'); // Kết nối đến server socket
 const SearchFriendByPhoneScreen = ({ navigation }) => {
   const { user } = useSelector((state) => state.user);
   const [phone, setPhone] = useState('');
@@ -18,7 +19,7 @@ const SearchFriendByPhoneScreen = ({ navigation }) => {
     if (!phone.trim()) return;
 
     try {
-      const response = await axios.post("https://echoapp-rho.vercel.app/api/search-friend-by-phone", {
+      const response = await axios.post("https://cnm-service.onrender.com/api/search-friend-by-phone", {
         phoneNumber: phone,
         userID: user.userID, // hoặc _id tùy backend
       });

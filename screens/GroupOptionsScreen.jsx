@@ -14,21 +14,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import AddFriends from '../components/addFriend/AddFriends';
 import { io } from 'socket.io-client';
-const socket = io("http://192.168.1.24:5000");
-//const socket = io('https://cnm-service.onrender.com');
+//const socket = io("http://192.168.86.55:5000");
+const socket = io('https://cnm-service.onrender.com');
 
 const GroupOptionsScreen = () => {
   const navigation = useNavigation(); 
   const route = useRoute();
   const { user } = useSelector((state) => state.user);
   const { chatID, currentName, currentImage ,chat} = route.params;
-  console.log("📦 chatID:", chat.chatID);
   const [chats, setChats] = useState(chat||[]);
-  const [groupName, setGroupName] = useState(currentName || '');
-  const [groupImage, setGroupImage] = useState(currentImage || null);
+  const [groupName, setGroupName] = useState(chats.name || '');
+  const [groupImage, setGroupImage] = useState(chats.avatar || null);
+  console.log("groupImage",groupImage);
   const [modalVisible, setModalVisible] = useState(false);
   const [friendsFromServer, setFriendsFromServer] = useState([]);
   const [selectedFriends, setSelectedFriends] = useState([]);
@@ -37,6 +36,11 @@ const GroupOptionsScreen = () => {
   const [isModalVisibleCC, setIsModalVisibleCC] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const [friends, setFriends] = useState([]);
+  const [member, setMember] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+// và useEffect fetch member bên trên...
+
+
   // Mở modal AddFriends
   const closeModalAdd = () => {
     setIsModalVisible(false);
@@ -75,6 +79,7 @@ const GroupOptionsScreen = () => {
       console.log("📦 updateChatt:", data);
       setChats(data);
     };
+    
 
   
     socket.on("newMember", handleNewMember);
@@ -84,6 +89,8 @@ const GroupOptionsScreen = () => {
     socket.on("updateMemberChattt", handleUpdateChatt);
     socket.on("updateChatmember", handleUpdateChatt);
     socket.on("outMemberr",handleUpdateRole)
+    socket.on("updateChat", handleUpdateChatt);
+    socket.on("updateMemberChat", handleUpdateChatt);
   
     return () => {
       socket.off("newMember", handleNewMember);
@@ -92,6 +99,9 @@ const GroupOptionsScreen = () => {
       socket.off("updateChatt", handleUpdateChatt);
       socket.off("updateMemberChattt", handleUpdateChatt);
       socket.off("updateChatmember", handleUpdateChatt);
+      socket.off("outMemberr",handleUpdateRole);
+      socket.off("updateChat", handleUpdateChatt);
+      socket.off("updateMemberChat", handleUpdateChatt);
     };
   }, [user?.userID]);
   
@@ -102,7 +112,7 @@ const GroupOptionsScreen = () => {
 
   const getMemberList = async () => {
     try {
-      const response = await fetch("https://echoapp-rho.vercel.app/api/InforMember", {
+      const response = await fetch("https://cnm-service.onrender.com/api/InforMember", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ members: chats.members }),
@@ -111,7 +121,6 @@ const GroupOptionsScreen = () => {
       const data = await response.json();
       if (response.ok) {
         setFriendsFromServer(data);
-        console.log("📦 members:", data);
       } else {
         console.error("❌ Error fetching friends list:", data.message);
       }
@@ -119,10 +128,9 @@ const GroupOptionsScreen = () => {
       console.error("❌ Fetch failed:", error.message);
     }
   };
-
   const getFriendsList = async () => {
     try {
-      const res = await fetch("https://echoapp-rho.vercel.app/api/getMemberAddMember", {
+      const res = await fetch("https://cnm-service.onrender.com/api/getMemberAddMember", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -139,9 +147,9 @@ const GroupOptionsScreen = () => {
       }
   
       const result = await res.json();
-  
       // Validate the result to ensure it has the expected structure
       if (result && result.friends) {
+        console.log("📦 Friends list:", result.friends);
         setFriends(result.friends);
       } else {
         console.error("❌ Invalid response format:", result);
@@ -159,14 +167,37 @@ useEffect(() => {
 useEffect(() => {
   if (isModalVisible && user && chats?.chatID) {
     getFriendsList();
-    console.log("📦 friends:", friends);
+    
   }
 }, [isModalVisible]);
+const sendNotification = (content) => {
+  if (!content.trim()) return;
+
+  const tempID = Date.now().toString();
+
+  const newNotification = {
+    tempID,
+    chatID: chats.chatID,
+    senderID: user.userID,
+    content,
+    type: "notification",
+    timestamp: new Date().toISOString(),
+    media_url: [],
+    status: "sent",
+    pinnedInfo: null,
+    senderInfo: { name: user.name, avatar: user.anhDaiDien },
+  };
+  socket.emit("send_message", newNotification);
+};
     const handlremoveMember = async () => {
       if (chats.members.find(m => m.userID === user.userID && m.role === 'admin') ){
-       // Alert.alert('⚠️ Bạn không thể rời nhóm khi là admin');
-        openModalCC();
-
+         setIsAdmin(false);
+          navigation.navigate('TransferRoleScreen', {     
+                                chatID: chats.chatID,
+                                friendsFromServer: friendsFromServer,
+                                currentUserID: user,
+                                isAdmin: isAdmin,
+                              })
       } else{
        Alert.alert('Bạn muốn rời nhóm', 'Bạn có chắc muốn rời nhóm?', [
             { text: 'Hủy' },
@@ -174,7 +205,9 @@ useEffect(() => {
               text: 'Rời nhóm',
               style: 'destructive',
               onPress: () =>{ socket.emit("removeMember", {chatID: chats.chatID, memberID: user.userID});
+                sendNotification (`${user.name} đã rời khỏi nhóm chat.`);
                 navigation.navigate("Home", { screen: "Tin Nhắn" });
+
               },
             },
           ]);
@@ -254,36 +287,88 @@ useEffect(() => {
         <Icon name="arrow-back" size={24} color="#fff" />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Tùy chọn nhóm</Text>
+      <Text style={styles.title}>Tùy chọn</Text>
 
-      {/* Ảnh nhóm */}
-      <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
-        {groupImage ? (
-          <Image source={{ uri: groupImage }} style={styles.image} />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={{ color: '#888' }}>Chọn ảnh nhóm</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+{/* Ảnh nhóm hoặc ảnh người chat 1-1 */}
+<TouchableOpacity onPress={chats.type === 'group' ? pickImage : null} style={styles.imageContainer}>
+  {chats.type === 'group' ? (
+    groupImage ? (
+      <Image source={{ uri: groupImage }} style={styles.image} />
+    ) : (
+      <View style={styles.placeholder}>
+        <Text style={{ color: '#888' }}>Chọn ảnh nhóm</Text>
+      </View>
+    )
+  ) : (
+    member?.anhDaiDien ? (
+      <Image source={{ uri: member.anhDaiDien }} style={styles.image} />
+    ) : (
+      <View style={styles.placeholder}>
+        <Text style={{ color: '#888' }}>Ảnh đại diện</Text>
+      </View>
+    )
+  )}
+</TouchableOpacity>
 
-      {/* Tên nhóm */}
-      <TextInput
-        style={styles.input}
-        value={groupName}
-        onChangeText={setGroupName}
-        placeholder="Nhập tên nhóm"
-        placeholderTextColor="#888"
-      />
+{/* Tên nhóm hoặc tên người chat 1-1 */}
+{chats.type === 'group' ? (
+  <TextInput
+    style={styles.input}
+    value={groupName}
+    onChangeText={setGroupName}
+    placeholder="Nhập tên nhóm"
+    placeholderTextColor="#888"
+    editable={true} // cho chỉnh sửa tên nhóm
+  />
+) : (
+  <Text style={[styles.input, { color: '#fff', paddingVertical: 10 }]}>
+    {member?.name || 'Người dùng'}
+  </Text>
+)}
 
+
+    {/* Nút Lưu tên nhóm chỉ hiện khi group */}
+    {chats.type === 'group' && (
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveName}>
         <Text style={styles.saveText}>💾 Lưu tên nhóm</Text>
       </TouchableOpacity>
+    )}
 
+      <TouchableOpacity
+        style={styles.option}
+        onPress={() => navigation.navigate('MediaFilesScreen', { chat: chats })}
+      >
+        <Text style={styles.optionText}>📁 Ảnh, video, file</Text>
+      </TouchableOpacity>
+
+      {chats.type === 'group' && (
+      <>
       {/* Xem thành viên */}
       <TouchableOpacity style={styles.option} onPress={openModal}>
         <Text style={styles.optionText}>👥 Quản lý thành viên</Text>
       </TouchableOpacity>
+
+{chats.members.find(m => m.userID === user.userID && m.role === 'admin') && (
+  <TouchableOpacity
+    style={styles.option}
+    onPress={() => {
+      setIsAdmin(true);
+      navigation.navigate('TransferRoleScreen', {
+      chatID: chats.chatID,
+      friendsFromServer: friendsFromServer,
+      currentUserID: user,
+      isAdmin: isAdmin,
+      });
+
+    }}
+  >
+    <Text style={styles.optionText}>🔄 Chuyển quyền</Text>
+  </TouchableOpacity>
+)}
+
+
+
+      
 
       <Modal visible={modalVisible} animationType="slide" onRequestClose={closeModal}>
   <View style={styles.modalContent}>
@@ -350,6 +435,8 @@ useEffect(() => {
                   adminID:user.userID,
                   memberID: selectedFriend?.userID,
                 });
+                  const content = `${user.name} đã xóa ${selectedFriend?.name} khỏi nhóm chat.`;
+                  sendNotification(content);                
                 },
               },
             ]);
@@ -380,96 +467,41 @@ useEffect(() => {
       <TouchableOpacity style={styles.option} onPress={handlremoveMember}>
         <Text style={styles.optionText}>🚪 Rời nhóm</Text>
       </TouchableOpacity>
-      <Modal
-  visible={isModalVisibleCC}
-  animationType="slide"
-  transparent={false}
-  onRequestClose={closeModalCC}
->
-  <View style={styles.modalContainer}>
-    <FlatList
-      data={friendsFromServer}
-      keyExtractor={(item) => item.userID}
-      renderItem={({ item }) => {
-        const isSelf = item.userID === user.userID;
-        const isSelected = !isSelf && selectedFriend?.userID === item.userID;
-        const isAdmin = chats.members.find(m => m.userID === item.userID && m.role === 'admin');
-
-        return (
-          <View
-            style={[
-              styles.friendRow,
-              { backgroundColor: isSelected ? '#333' : 'transparent' },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.friendInfo}
-              onPress={() => toggleFriend(item)}
-            >
-              <Image source={{ uri: item.avatar }} style={styles.avatar} />
-              <Text style={styles.friendName1}>
-                {isSelf ? 'Bạn' : item.name}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Nếu không phải mình thì mới xử lý quyền */}
-            {!isSelf && (
-              isAdmin ? (
-                <View style={styles.adminLabel}>
-                  <Text style={styles.adminLabelText}>Admin</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.adminButton}
-                  onPress={() => {
-                   // Alert.alert('Gán quyền admin', `Đã gán admin cho: ${item.userID} ${chat.chatID} ${user.userID}`);
-                    // TODO: Gọi API gán quyền admin tại đây
-                    socket.emit("updateAdmin",{
-                        chatID: chats.chatID,
-                        adminID:user.userID,
-                        memberID: item.userID,
-                    });
-                       
-                  }}
-                >
-                  <Text style={styles.adminButtonText}>Gán admin</Text>
-                </TouchableOpacity>
-              )
-            )}
-
-            {isSelected && (
-              <Icon name="checkmark" size={20} color="#00caff" />
-            )}
-          </View>
-        );
-      }}
-      ListEmptyComponent={
-        <Text style={styles.empty}>Không tìm thấy bạn bè</Text>
-      }
-    />
-
-    {/* Nút đóng modal */}
-    { chats.members.find(m => m.userID === user.userID && m.role === 'admin') ? (
-    <TouchableOpacity style={styles.closeModal} onPress={closeModalCC}>
-      <Text style={styles.optionText}>Đóng</Text>
-    </TouchableOpacity>)
-    : (
-      <TouchableOpacity style={styles.closeModal} onPress={handlOutchat}>
-        <Text style={styles.optionText}>Rời nhóm</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-</Modal>
+     
     
       {/* Nút giải tán nhóm */}
-      
-      {chat.members.find(m => m.userID === user.userID && m.role === 'admin') && (
+      {chats.members.find(m => m.userID === user.userID && m.role === 'admin') && (
       <TouchableOpacity
         style={[styles.option, { backgroundColor: '#ff4444' }]}
         onPress={handlDeleteChat}
       >
         <Text style={[styles.optionText, { color: '#fff' }]}>❌ Giải tán nhóm</Text>
       </TouchableOpacity>)}
+      </>
+    )}
+
+    {/* Nếu là chat 1-1 thì hiện nút xóa cuộc trò chuyện */}
+    {chats.type === 'private' && (
+      <TouchableOpacity
+        style={[styles.option, { backgroundColor: '#ff4444' }]}
+        onPress={() => {
+          Alert.alert('Xóa cuộc trò chuyện', 'Bạn có chắc muốn xóa cuộc trò chuyện này?', [
+            { text: 'Hủy', style: 'cancel' },
+            {
+              text: 'Xóa',
+              style: 'destructive',
+              onPress: () => {
+                socket.emit('deletePrivateChat', { chatID: chats.chatID });
+                navigation.navigate('Home', { screen: 'Tin Nhắn' });
+              },
+            },
+          ]);
+        }}
+      >
+        <Text style={[styles.optionText, { color: '#fff' }]}>🗑️ Xóa cuộc trò chuyện</Text>
+      </TouchableOpacity>
+    )}
+
     </View>
   );
 };

@@ -19,7 +19,8 @@ import { useDispatch } from "react-redux";
 import { setUser } from "@/redux/slices/UserSlice";
 import { io } from 'socket.io-client';
 
-const socket = io('http://172.16.1.212:5000');
+//const socket = io('http://192.168.1.33:5000');
+const socket = io('https://cnm-service.onrender.com'); // Kết nối với server socket
 
 const ProfileScreen = () => {
   const { user } = useSelector((state) => state.user);

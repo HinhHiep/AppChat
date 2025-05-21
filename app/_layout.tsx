@@ -12,15 +12,16 @@ import  BottomTabBar  from '@/components/bottomtab/BottomTab';
 import  ProfileScreen  from "../screens/ProfileScreen";
 import ChatScreen from "../screens/ChatScreen";
 import  FullImageScreen from '../screens/FullImageScreen';
-import { Provider } from 'react-redux'
-import  store  from '../redux/store'
+import { Provider } from 'react-redux';
+import  store  from '../redux/store';
 import FriendRequestScreen from "@/screens/FriendRequestScreen";
 import  SearchBar from "@/screens/SearchBar";
 import SearchFriendByPhoneScreen from "@/screens/SearchFriendByPhoneScreen";
 import CreateGroupScreen from "@/screens/CreateGroupScreen";
 import GroupOptionsScreen from '@/screens/GroupOptionsScreen';
+import MediaFilesScreen from "@/screens/MediaFilesScreen";
+import TransferRoleScreen from "@/screens/TransferRoleScreen";
 
- 
 const Stack = createNativeStackNavigator();
 export const AppLayout = () => {
   return (
@@ -47,8 +48,11 @@ export const AppLayout = () => {
       <Stack.Screen name="SearchFriendByPhoneScreen" component={SearchFriendByPhoneScreen} />
       <Stack.Screen name="CreateGroupScreen" component={CreateGroupScreen} />
       <Stack.Screen name="GroupOptionsScreen" component={GroupOptionsScreen} />
+      <Stack.Screen name="MediaFilesScreen" component={MediaFilesScreen} />
+      <Stack.Screen name="TransferRoleScreen" component={TransferRoleScreen} />
     </Stack.Navigator>
     </Provider>
   );
 };
 export default AppLayout;
+// 

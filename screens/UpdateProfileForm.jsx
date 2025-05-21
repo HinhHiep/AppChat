@@ -15,7 +15,8 @@ import { setUser, updateUser } from "@/redux/slices/UserSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { io } from 'socket.io-client';
 
-const socket = io('http://172.16.1.212:5000');
+//const socket = io('http://192.168.1.110:5000');
+const socket = io('https://cnm-service.onrender.com'); // Kết nối với server socket
 
 // Hàm validate tên (cho phép tên có dấu, ít nhất 2 từ)
 const validateName = (name) => {
@@ -140,7 +141,7 @@ const UpdateProfileForm = ({ user, onClose = () => {} }) => {
     name: file.fileName || "photo.jpg",
   });
 
-  const res = await fetch("http://172.16.1.212:5000/api/upload", {
+  const res = await fetch("https://cnm-service.onrender.com/api/upload", {
     method: "POST",
     body: imageForm,
     // ❌ Không đặt Content-Type ở đây
@@ -235,7 +236,7 @@ const UpdateProfileForm = ({ user, onClose = () => {} }) => {
       userID: user.userID
     };
     try {
-      const response = await fetch(`http://172.16.1.212:5000/api/users/${user.userID}`, {
+      const response = await fetch(`https://cnm-service.onrender.com/api/users/${user.userID}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

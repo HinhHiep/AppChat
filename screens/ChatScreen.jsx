@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard ,Modal} from 'react-native';
+import { View, Text, Image, TextInput ,StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard ,Modal} from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from "expo-image-picker";
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,8 +14,8 @@ import EmojiSelector from 'react-native-emoji-selector';
 import axios from "axios";
 import { setUser } from "@/redux/slices/UserSlice";
 import { useDispatch } from "react-redux";
-//const socket = io('https://cnm-service.onrender.com');
-const socket = io('http://172.16.1.212:5000');
+const socket = io('https://cnm-service.onrender.com');
+//const socket = io('http://192.168.86.55:5000');
 
 const ChatScreen = () => {
 
@@ -23,7 +23,8 @@ const ChatScreen = () => {
   const route = useRoute();
   const { user } = useSelector((state) => state.user);
   const { item } = route.params;
-  const [message, setMessage] = useState(item?.lastMessage || []);
+  const [chats, setChats] = useState(item); 
+  const [message, setMessage] = useState(chats?.lastMessage || []);
   const [messages, setMessages] = useState("");
   const scrollViewRef = useRef();
   const [photos, setPhotos] = useState([]);
@@ -38,15 +39,26 @@ const ChatScreen = () => {
   const [length, setLength] = useState(item?.members.length || 0);
   const [emoji, setEmoji] = useState('');
   const dispatch = useDispatch();
- console.log("item",item);
+  const [images, setImages] = useState([]);
  const [member, setMember] = useState(null);
+ const [inputFocused, setInputFocused] = useState(false);
+const [selectedMessage, setSelectedMessage] = useState(null);  // Tin nhắn được chọn
+const [showActionModal, setShowActionModal] = useState(false); // Hiển thị menu tác vụ
+const [replyMessage, setReplyMessage] = useState(null);   // Tin nhắn được trả lời
+const [pinnedMessages, setPinnedMessages] = useState([]); // Mảng tin nhắn ghim
+const [showAllPinned, setShowAllPinned] = useState(false); // để toggle xem nhiều/ẩn bớt
+
+
+
+
+
  
   const handleMember = async(memberID)=>{
     try{
-        const res = await axios.post("http://172.16.1.212:5000/api/usersID", {
+        const res = await axios.post("https://cnm-service.onrender.com/api/usersID", {
           userID: memberID
         });
-          console.log("Member data:", res.data);
+          
           setMember(res.data);
       }
       catch (error) {
@@ -57,19 +69,19 @@ const ChatScreen = () => {
   useEffect(() => {
     if (!item || item.type !== "private") return;
     const memberID = item.members.find((m) => m.userID !== user.userID)?.userID;
-    console.log("memberID", memberID);
+   
     if (memberID) {
       handleMember(memberID);
     }
   }, [item]);
-  console.log("member",member);
+ 
   useEffect(() => {
      const unsubscribe = navigation.addListener('focus', () => {
        const routes = navigation.getState()?.routes;
        const currentIndex = navigation.getState()?.index;
        const prevScreen = routes[currentIndex - 1];
        setScreens(prevScreen?.name);
-       console.log("📍 Màn trước là:", prevScreen?.name);
+       
      });
       return unsubscribe;
    }, [navigation]);
@@ -80,13 +92,10 @@ const ChatScreen = () => {
       navigation.goBack();
     }
    }
-   const handleOptionGroup = ()=>{
-    if(item.type === 'group'){
-      navigation.navigate('GroupOptionsScreen', { chat: item });
-    } else{
-      alert("Bạn không thể thực hiện chức năng này với chat 1-1");
-    }
-   } 
+const handleOptionGroup = () => {
+  navigation.navigate('GroupOptionsScreen', { chat: item });
+};
+
    const pickImage = async () => {
   // Xin quyền truy cập thư viện
   const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -105,6 +114,8 @@ const ChatScreen = () => {
     // result.assets là mảng các file đã chọn
     const selectedImages = result.assets.filter(asset => asset.type === "image");
     const selectedVideos = result.assets.filter(asset => asset.type === "video");
+    console.log("Selected images:", selectedImages);
+    console.log("Selected videos:", selectedVideos);
     setVideos(selectedVideos);
     setImages(selectedImages);
   }
@@ -113,7 +124,7 @@ const ChatScreen = () => {
   const handleEmojiSelect = (emojiObject) => {
     // Lấy emoji từ emojiObject
     const emoji = emojiObject.native;
-    console.log("hhhh",emoji);
+    
     setMessage((prevMessage) => prevMessage + emoji);  // Thêm emoji vào tin nhắn
     setShowEmojiPicker(false);  // Đóng emoji picker sau khi chọn
   };
@@ -128,23 +139,23 @@ const ChatScreen = () => {
   const visibleMessages = sortedMessages.slice(-visibleCount); // lấy 10 tin nhắn mới nhất
 
 
-  const pickVideo = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      allowsEditing: false,
-      quality: 1,
-    });
+  // const pickVideo = async () => {
+  //   const result = await ImagePicker.launchImageLibraryAsync({
+  //     mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+  //     allowsEditing: false,
+  //     quality: 1,
+  //   });
   
-    if (!result.canceled) {
-      //console.log("Video URI:", result.assets);
-      //const video = result.assets[0];
-      setVideos(result.assets);
-      console.log("Video URI:",result.assets);
-      console.log("Video Type:",result.assets);
+  //   if (!result.canceled) {
+  //     //console.log("Video URI:", result.assets);
+  //     //const video = result.assets[0];
+  //     setVideos(result.assets);
+  //     console.log("Video URI:",result.assets);
+      
 
-      // Gửi video này về server
-    }
-  };
+  //     // Gửi video này về server
+  //   }
+  // };
   const sendSelectedVideos = async () => {
     if (!videos.length) return;
     const formData = new FormData();
@@ -178,6 +189,56 @@ const ChatScreen = () => {
       setMessage((prev) => [...prev, newMsg]);
       socket.emit('send_message', newMsg);
       setVideos([]);  // Reset videos state
+    } catch (error) {
+      console.error("Upload error:", error);
+    }
+  };
+
+  const sendSelectedVideoss = async () => {
+    if (!videos.length) return;
+    const formData = new FormData();
+    videos.forEach((video) => {
+      const fileType = video.uri.split('.').pop();
+      formData.append('files', {
+        uri: video.uri,
+        type: `video/${fileType}`,
+        name: `video.${fileType}`,
+      });
+    });
+  
+    try {
+      const response = await fetch("https://cnm-service.onrender.com/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "multipart/form-data" },
+        body: formData,
+      });
+      const data = await response.json();
+      const newMsg = {
+        tempID: Date.now().toString(),
+        chatID: item.chatID,
+        senderID: user.userID,
+        content: '',
+        type: 'video',
+        timestamp: new Date().toISOString(),
+        media_url: data.urls,
+        status: 'sent',
+        senderInfo: { name: user.name, avatar: user.anhDaiDien },
+      ...(replyMessage && {
+  replyTo: {
+    messageID: replyMessage.messageID || replyMessage._id,
+    senderID: replyMessage.senderID,
+    content: replyMessage.content,
+    type: replyMessage.type,
+    media_url: replyMessage.media_url || [],
+    senderInfo: replyMessage.senderInfo, // ✅ Bắt buộc phải có
+  }
+}),
+};
+      setMessage((prev) => [...prev, newMsg]);
+      socket.emit('send_message', newMsg);
+      setVideos([]);  // Reset videos state
+       setReplyMessage(null); // ✅ xóa trả lời sau khi gửi
+
     } catch (error) {
       console.error("Upload error:", error);
     }
@@ -226,7 +287,7 @@ const ChatScreen = () => {
           m.messageID === updatedMessage.messageID ? { ...m, ...updatedMessage } : m
         )
       );
-          console.log('Received unsend notification:', updatedMessage);
+          
     });
     socket.on("newMember", (data) => {
       setLength(data.length);
@@ -277,6 +338,52 @@ socket.on("update_user", (updatedUser) => {
       })
     );
   });
+  socket.on("unghim_notification", (message) => {
+    setPinnedMessages((prevPinned) =>
+      prevPinned.filter((msg) => msg.messageID !== message.messageID)
+    );
+    setMessage((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.messageID === message.messageID ? { ...msg, pinnedInfo: null } : msg
+      )
+    );
+  });
+  socket.on("ghim_notification", (message) => {
+    setPinnedMessages((prevPinned) => {
+      const existingMessage = prevPinned.find((msg) => msg.messageID === message.messageID);
+      if (existingMessage) {
+        return prevPinned.map((msg) =>
+          msg.messageID === message.messageID ? { ...msg, pinnedInfo: message.pinnedInfo } : msg
+        );
+      } else {
+        return [...prevPinned, { ...message, pinnedInfo: message.pinnedInfo }];
+      }
+    });
+    setMessage((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.messageID === message.messageID ? { ...msg, pinnedInfo: message.pinnedInfo } : msg
+      )
+    );
+  });
+  socket.on("removeChattt",(data)=>{
+    navigation.navigate("Home", { screen: "Tin Nhắn" });
+  })
+  socket.on("updateChatmember",(data)=>{
+   
+    setChats(data);
+  });
+  socket.on("updateChat",(data)=>{
+    setChats(data);
+  });
+
+  socket.on("updateMemberChattt",(data)=>{
+    setChats(data);
+    
+  });
+  socket.on("updateChat",(data)=>{
+    setChats(data);
+  })
+  
 
     return () => {
       socket.off(item.chatID, handleNewMessage);
@@ -289,6 +396,13 @@ socket.on("update_user", (updatedUser) => {
       socket.off("status_update");
       socket.off("update_user");
       socket.off("updatee_user");
+      socket.off("unghim_notification");
+      socket.off("ghim_notification");
+      socket.off("removeChattt");
+      socket.off("updateChat");
+      socket.off("updateMemberChattt");
+      socket.off("updateChatmember");
+      
     };
   }, [item.chatID, user.userID]);
 
@@ -314,37 +428,119 @@ socket.on("update_user", (updatedUser) => {
     if (!messages.trim()) return;
     const tempID = Date.now().toString();
     const newMsg = {
-      tempID,
-      chatID: item.chatID,
-      senderID: user.userID,
-      content: messages,
-      type: 'text',
-      timestamp: new Date().toISOString(),
-      media_url: [],
-      status: 'sent',
-      senderInfo: { name: user.name, avatar: user.anhDaiDien },
-    };
+  tempID,
+  chatID: item.chatID,
+  senderID: user.userID,
+  content: messages,
+  type: 'text',
+  timestamp: new Date().toISOString(),
+  media_url: [],
+  status: 'sent',
+  senderInfo: { name: user.name, avatar: user.anhDaiDien },
+  ...(replyMessage && {
+  replyTo: {
+    messageID: replyMessage.messageID || replyMessage._id,
+    senderID: replyMessage.senderID,
+    content: replyMessage.content,
+    type: replyMessage.type,
+    media_url: replyMessage.media_url || [],
+    senderInfo: replyMessage.senderInfo, // ✅ Bắt buộc phải có
+  }
+}),
+};
+
     socket.emit('send_message', newMsg);
     setMessage((prev) => [...prev, newMsg]);
     setMessages('');
+    setReplyMessage(null); // ✅ xóa trả lời sau khi gửi
+
   };
-  const sendSelectedImages = async () => {
+
+  const sendMessagee = () => {
+    if (!messages.trim()) return;
+    const tempID = Date.now().toString();
+    const newMsg = {
+  tempID,
+  chatID: item.chatID,
+  senderID: user.userID,
+  content: messages,
+  type: 'text',
+  timestamp: new Date().toISOString(),
+  media_url: [],
+  status: 'sent',
+  senderInfo: { name: user.name, avatar: user.anhDaiDien },
+};
+
+    socket.emit('send_message', newMsg);
+    setMessage((prev) => [...prev, newMsg]);
+    setMessages('');
+
+  };
+
+ const sendSelectedImagess = async () => {
    
-    if (!selected.length) return;
+    if (!images.length) return;
     const formData = new FormData();
-    selected.forEach((img) => {
-      const fileType = img.uri.split('.').pop();
-      formData.append('files', {
+    images.forEach((img) => {
+      formData.append("files", {
         uri: img.uri,
-        type: `image/${fileType}`,
-        name: `upload.${fileType}`,
+        type: img.mimeType || "image/jpeg",
+        name: img.fileName || "photo.jpg",
       });
     });
 
     try {
-      const response = await fetch("https://echoapp-rho.vercel.app/api/upload", {
+      const response = await fetch("https://cnm-service.onrender.com/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
+        body: formData,
+      });
+      const data = await response.json();
+      const newMsg = {
+        tempID: Date.now().toString(),
+        chatID: item.chatID,
+        senderID: user.userID,
+        content: '',
+        type: 'image',
+        timestamp: new Date().toISOString(),
+        media_url: data.urls,
+        status: 'sent',
+        senderInfo: { name: user.name, avatar: user.anhDaiDien },
+      ...(replyMessage && {
+  replyTo: {
+    messageID: replyMessage.messageID || replyMessage._id,
+    senderID: replyMessage.senderID,
+    content: replyMessage.content,
+    type: replyMessage.type,
+    media_url: replyMessage.media_url || [],
+    senderInfo: replyMessage.senderInfo, // ✅ Bắt buộc phải có
+  }
+}),
+};
+      setMessage((prev) => [...prev, newMsg]);
+      socket.emit('send_message', newMsg);
+      setSelected([]);
+      setShowGallery(false);
+      setReplyMessage(null); // ✅ xóa trả lời sau khi gửi
+    } catch (error) {
+      console.error("Upload error:", error);
+    }
+  };
+
+  const sendSelectedImages = async () => {
+   
+    if (!images.length) return;
+    const formData = new FormData();
+    images.forEach((img) => {
+      formData.append("files", {
+        uri: img.uri,
+        type: img.mimeType || "image/jpeg",
+        name: img.fileName || "photo.jpg",
+      });
+    });
+
+    try {
+      const response = await fetch("https://cnm-service.onrender.com/api/upload", {
+        method: "POST",
         body: formData,
       });
       const data = await response.json();
@@ -370,20 +566,148 @@ socket.on("update_user", (updatedUser) => {
 
   const handleLongPress = (msg) => {
     if (msg.senderID !== user.userID || msg.type === 'unsent') return;
-    console.log('Long Pressed:', msg.messageID);
-    console.log('Chat ID:', item.chatID);
+  
     Alert.alert('Thu hồi tin nhắn', 'Bạn có chắc muốn thu hồi?', [
       { text: 'Hủy' },
       {
         text: 'Thu hồi',
         style: 'destructive',
-        onPress: () => socket.emit('unsend_message', { chatID: item.chatID, messageID: msg.messageID, senderID: user.userID }),
+        onPress: () => {socket.emit('unsend_message', { chatID: item.chatID, messageID: msg.messageID, senderID: user.userID }); 
+        setShowActionModal(false);},
       },
     ]);
   };
 
-  return (
+  const sendNotification = (content) => {
+  if (!content.trim()) return;
+
+  const tempID = Date.now().toString();
+
+  const newNotification = {
+    tempID,
+    chatID: item.chatID,
+    senderID: user.userID,
+    content,
+    type: "notification",
+    timestamp: new Date().toISOString(),
+    media_url: [],
+    status: "sent",
+    senderInfo: { name: user.name, avatar: user.anhDaiDien },
+  };
+  socket.emit("send_message", newNotification);
+  setMessage(prev => [...prev, newNotification]);
+};
+const handleGhimMessage = (message) => {
+    if (message.messageID) {
+      socket.emit('ghim_message', {
+        chatID: item.chatID,
+        messageID: message.messageID,
+        senderID: user.userID
+      });
+
+    // Gửi thông báo ngay sau khi emit thành công
+    const content = `📌 ${user.name} đã ghim một tin nhắn.`;
+    sendNotification(content);
+    setTimeout(() => {
+       setShowActionModal(false);
+    }, 1000); // không cần delay quá lâu
+    }
+  }
+  const unpinMessage = (msg) => {
+  socket.emit("unghim_message", { chatID: msg.chatID, messageID: msg.messageID });
+        // Gửi thông báo ngay sau khi emit thành công
+    const content = `📌 ${user.name} đã bỏ ghim một tin nhắn.`;
+    // Đóng modal sau một khoảng delay nhẹ (tùy thích)
+    setTimeout(() => {
+      sendNotification(content);
+     setPinnedMessages(prev => prev.filter(m => m.messageID !== msg.messageID));
+    }, 1000); // không cần delay quá lâu
+  
+};
+useEffect(() => {
+  if (!message || !Array.isArray(message)) return;
+
+  const pinned = message.filter((msg) => msg.pinnedInfo);
+  setPinnedMessages(pinned);
+}, [message]);
+
+
+
+return (
+  <>
+    <Modal
+  transparent
+  visible={showActionModal}
+  animationType="fade"
+  onRequestClose={() => setShowActionModal(false)}
+>
+  <TouchableOpacity
+    style={styles.modalOverlay}
+    activeOpacity={1}
+    onPressOut={() => setShowActionModal(false)}
+  >
+    <View style={styles.actionModal}>
+
+<TouchableOpacity
+  style={styles.actionButton}
+onPress={() => {
+  if (selectedMessage) {
+    setReplyMessage({
+      ...selectedMessage,
+      senderInfo: selectedMessage.senderInfo || {
+        name: item.type === "private"
+          ? member?.name
+          : item.members.find((m) => m.userID === selectedMessage.senderID)?.name || "Người dùng",
+        avatar: item.type === "private"
+          ? member?.anhDaiDien
+          : item.members.find((m) => m.userID === selectedMessage.senderID)?.avatar || ""
+      }
+    });
+  }
+  setShowActionModal(false);
+}}
+
+>
+  <FAIcon name="reply" size={20} color="#00caff" style={styles.actionIcon} />
+  <Text style={styles.actionText}>Trả lời</Text>
+</TouchableOpacity>
+
+
+
+
+<TouchableOpacity
+  style={styles.actionButton}
+  onPress={() => {
+    if (!selectedMessage) return;
+    const id = selectedMessage.messageID || selectedMessage._id;
+    if(pinnedMessages.some((msg) => msg.messageID === id)){
+      Alert.alert("Thông báo", "Tin nhắn đã được ghim rồi!");
+      return;
+    }else{
+      handleGhimMessage(selectedMessage); 
+    }
+  }}
+>
+  <FAIcon name="thumb-tack" size={20} color="#ffaa00" style={styles.actionIcon} />
+  <Text style={styles.actionText}>Ghim tin nhắn</Text>
+</TouchableOpacity>
+
+
+      {selectedMessage?.senderID === user.userID && selectedMessage.type !== 'unsend'  && (
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={()=>handleLongPress(selectedMessage)}
+        >
+          <FAIcon name="undo" size={20} color="#ff4444" style={styles.actionIcon} />
+          <Text style={[styles.actionText]}>Thu hồi tin nhắn</Text>
+        </TouchableOpacity>
+      )}
+
+    </View>
+  </TouchableOpacity>
+</Modal>
     <View style={{ flex: 1, backgroundColor: '#000' }}>
+      
       <View style={styles.header}>
         <TouchableOpacity onPress={() => handleScreenChange()}>
           <Icon name="arrow-back" size={24} color="#fff" />
@@ -408,52 +732,120 @@ socket.on("update_user", (updatedUser) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      
+{pinnedMessages.length > 0 && (
+  <View style={styles.pinnedContainer}>
+    <Text style={styles.pinnedHeader}>
+      📌 {pinnedMessages.length} tin nhắn được ghim
+    </Text>
+
+    {(showAllPinned ? pinnedMessages : [pinnedMessages[pinnedMessages.length - 1]]).map((msg) => (
+<View key={msg.tempID || msg._id || index} style={styles.pinnedMessage}>
+
+        <Text style={styles.pinnedText}>
+          {msg.senderID === user.userID ? 'Bạn' : msg.senderInfo?.name || 'Ai đó'}: {
+            msg.type === 'image' ? (<Text>Image</Text>) :
+            msg.type === 'video' ? (<Text>Video</Text>) :
+            msg.type === 'audio' ? (<Text>Audio</Text>) :
+            msg.type === 'doc' ? (<Text>Document</Text>) :
+          msg.content.slice(0, 80)}
+        </Text>
+        <TouchableOpacity onPress={() => unpinMessage(msg)}>
+          <Text style={{ color: '#ff6f00' }}>❌</Text>
+        </TouchableOpacity>
+      </View>
+    ))}
+
+    {pinnedMessages.length > 1 && (
+      <TouchableOpacity onPress={() => setShowAllPinned(!showAllPinned)}>
+        <Text style={styles.togglePinned}>
+          {showAllPinned ? 'Ẩn bớt' : 'Xem tất cả'}
+        </Text>
+      </TouchableOpacity>
+    )}
+  </View>
+)}
+
+
+
+
       <ScrollView 
       ref={scrollContainerRef}
             onScroll={handleScroll} 
             contentContainerStyle={styles.chat}>
         {visibleMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((msg, index) => {
-          const isMine = msg.senderID === user.userID;
-          return (
-            <TouchableOpacity key={msg._id || index} onLongPress={() => handleLongPress(msg)}>
-              <View style={isMine ? styles.myMessageContainer : styles.otherMessageContainer}>
-                {!isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
-                <View style={isMine ? styles.myMessage : styles.otherMessage}>
-                  {msg.type === 'video' && Array.isArray(msg.media_url) ? (
-                        msg.media_url.map((vid, i) => (
-                          <Video
-                            key={i}
-                            source={{ uri: vid }}
-                            controls
-                            resizeMode="contain"
-                            paused={false}
-                            style={{ width: 200, height: 150 }}
-                          />
-                        ))
-                      )
-                    : msg.type === 'unsend' ? (
-                    <Text style={{ fontStyle: 'italic', color: 'gray' }}>Tin nhắn đã được thu hồi</Text>
-                  ) : msg.type === 'image' ? (
-                    msg.media_url.map((img, i) => (
-                      <TouchableOpacity
-                        key={i}
-                        onPress={() => navigation.navigate('FullImageScreen', { uri: typeof img === 'string' ? img : img.uri })}
-                        >
-                      <Image key={i} source={{ uri: img }} style={styles.chatImage} />
-                     </TouchableOpacity>
-                    ))
-                  ) : (
-                    <Text style={{ color: isMine ? '#eaeaea' : '#fff' }}>{msg.content}</Text>
-                  )}
-                  {isMine && msg.type !== 'unsend' && (
-                    <Text style={styles.statusText}>{msg.status === 'read' ? 'Đã xem' : 'Đã gửi'}</Text>
-                  )}
-                </View>
-                {isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
+          if (msg.type === 'notification') {
+            // Render tin nhắn notification kiểu đặc biệt
+            return (
+              <View key={msg._id || msg.tempID || index} style={styles.notificationContainer}>
+                <Text style={styles.notificationText}>{msg.content}</Text>
               </View>
-            </TouchableOpacity>
-          );
-        })}
+            );
+          }
+
+          const isMine = msg.senderID === user.userID;
+ return (
+<TouchableOpacity
+  key={msg._id || index}
+  onLongPress={() => {
+    setSelectedMessage(msg);
+    setShowActionModal(true);
+  }}
+>
+      <View style={isMine ? styles.myMessageContainer : styles.otherMessageContainer}>
+        {!isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
+        <View style={isMine ? styles.myMessage : styles.otherMessage}>
+          {msg.replyTo && (
+  <View style={{ backgroundColor: '#444', padding: 6, borderRadius: 6, marginBottom: 4,
+    justifyContent:"space-between",
+  }}>
+    <Text style={{ fontSize: 12, color: '#ccc' }}>
+      Trả lời {msg.replyTo.senderID === user.userID ? 'Bạn' : msg.replyTo.senderInfo?.name || 'ai đó'}: {
+      msg.replyTo.type === 'text' ? msg.replyTo.content:
+      msg.replyTo.type === 'image' ? <Text>Image</Text> :
+      msg.replyTo.type === 'video' ? <Text>Video</Text> :
+      msg.replyTo.type === 'audio' ? <Text>Audio</Text> :
+      msg.replyTo.type === 'doc' ? <Text>Document</Text> :
+      null}
+    </Text>
+  </View>
+)}
+
+          {msg.type === 'video' && Array.isArray(msg.media_url) ? (
+            msg.media_url.map((vid, i) => (
+              <Video
+                key={i}
+                source={{ uri: vid }}
+                controls
+                resizeMode="contain"
+                paused={false}
+                style={{ width: 200, height: 150 }}
+              />
+            ))
+          ) : msg.type === 'unsend' ? (
+            <Text style={{ fontStyle: 'italic', color: 'gray' }}>Tin nhắn đã được thu hồi</Text>
+          ) : msg.type === 'image' ? (
+            msg.media_url.map((img, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => navigation.navigate('FullImageScreen', { uri: typeof img === 'string' ? img : img.uri })}
+              >
+                <Image key={i} source={{ uri: img }} style={styles.chatImage} />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={{ color: isMine ? '#eaeaea' : '#fff' }}>{msg.content}</Text>
+          )}
+          {isMine && msg.type !== 'unsend' && (
+            <Text style={styles.statusText}>{msg.status === 'read' ? 'Đã xem' : 'Đã gửi'}</Text>
+          )}
+        </View>
+        {isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
+      </View>
+    </TouchableOpacity>
+  );
+})}
       </ScrollView>
 
       {showGallery && (
@@ -480,46 +872,126 @@ socket.on("update_user", (updatedUser) => {
       )}
  {/* {showEmojiPicker && (<Picker onEmojiSelect={handleEmojiSelect} />)} */}
       { showEmojiPicker && (<EmojiBoard onSelect={(emoji) => setEmoji(emoji)} />)}
+
+        {replyMessage && (
+  <View style={{ backgroundColor: '#222', padding: 15 , justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={{ color: 'white', fontSize: 15, fontWeight: 'bold' }}>
+    {replyMessage.senderID === user.userID ? 'Bạn' : (replyMessage.senderInfo?.name || 'ai đó')}: {replyMessage.content}
+      </Text>
+
+    <TouchableOpacity onPress={() => setReplyMessage(null)}>
+      <Text style={{ color: 'white', fontWeight:'bold', fontSize:15}}>❌ Hủy</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+
 <View style={styles.inputBar}>
-  <InputDefault
-    placeholder="Tin nhắn"
-    value={messages}
-    onChangeText={setMessages}
-    style={styles.input}
-  />
-  {/* () => Keyboard.dismiss() || setShowEmojiPicker(!showEmojiPicker) */}
-  <TouchableOpacity onPress={()=>setShowEmojiPicker(true)} >
-    <Icon name="happy-outline" size={22} color="#ffaa00" style={styles.icon} />
+
+    <TouchableOpacity onPress={() => setShowEmojiPicker(true)}>
+      <Icon name="happy-outline" size={22} color="#ffaa00" style={styles.icon} />
+    </TouchableOpacity>
+
+<TextInput
+  placeholder="Tin nhắn"
+  value={messages}
+  onChangeText={setMessages}
+  style={styles.input}
+  onFocus={() => setInputFocused(true)}
+  onBlur={() => setInputFocused(false)}
+/>
+{ !inputFocused && (
+  <>
+    {images.length > 0 ? (
+  <TouchableOpacity onPress={() => { 
+    if (replyMessage){
+      sendSelectedImagess();
+    }else{
+    sendSelectedImages() }}} style={styles.iconWrapper}>
+    <Icon name="cloud-upload-outline" size={22} color="#00ff88" style={styles.icon} />
   </TouchableOpacity>
-  {/* onPress={() => setShowGallery(!showGallery)} */}
-  <TouchableOpacity onPress={pickImage}>
+) : (
+  <TouchableOpacity onPress={pickImage} style={styles.iconWrapper}>
     <Icon name="image" size={22} color="#ffaa00" style={styles.icon} />
   </TouchableOpacity>
-  { videos.length ===0 && (
-  <TouchableOpacity onPress={()=>{pickVideo();setVideo_Image("Video")}}>
-    <FAIcon name="paperclip" size={22} color="#ffaa00" style={styles.icon} />
-  </TouchableOpacity>
-   )}
-  {videos.length > 0 && (
-    <TouchableOpacity onPress={()=>{sendSelectedVideos()}}>
-    <FAIcon name="save" size={22} color="#ffaa00" style={styles.icon} />
-  </TouchableOpacity>
-  )}
-  {selected.length > 0 && (
-    <TouchableOpacity onPress={sendSelectedImages}>
-      <Icon name="cloud-upload-outline" size={22} color="#00ff88" style={styles.icon} />
-    </TouchableOpacity>
-  )}
+)}
+
+    {videos.length === 0 && (
+      <TouchableOpacity onPress={() => { sendSelectedVideos }}>
+        <FAIcon name="paperclip" size={22} color="#ffaa00" style={styles.icon} />
+      </TouchableOpacity>
+    )}
+
+      <TouchableOpacity >
+        <Icon name="mic-outline" size={26} color="#ffaa00" style={[styles.icon, { marginLeft: 8 }]} />
+      </TouchableOpacity>
+
+    {videos.length > 0 && (
+      <TouchableOpacity onPress={()=>{if(replyMessage){
+        sendSelectedVideoss();
+      }else{
+      sendSelectedVideos()}}}>
+        <FAIcon name="save" size={22} color="#ffaa00" style={styles.icon} />
+      </TouchableOpacity>
+    )}
+
+    
+  </>
+)}
+
   
-  <TouchableOpacity onPress={sendMessage}>
+  <TouchableOpacity onPress={()=>{
+    if (replyMessage){
+    sendMessage();
+    } else{
+    sendMessagee();
+    }
+  }}>
     <Icon name="send" size={22} color="#00caff" style={styles.icon} />
   </TouchableOpacity>
 </View>
     </View>
+    </>
   );
 };
 
+
 const styles = StyleSheet.create({
+  pinnedContainer: {
+  backgroundColor: '#333',
+  paddingVertical: 10,
+  paddingHorizontal: 12,
+  marginBottom: 8,
+},
+
+pinnedHeader: {
+  color: '#ffeb3b',
+  fontWeight: 'bold',
+  marginBottom: 4,
+},
+
+pinnedMessage: {
+  paddingVertical: 4,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+},
+
+pinnedText: {
+  fontWeight: 'bold',
+  color: '#fff',
+  fontSize: 15,
+  flex: 1,
+},
+
+togglePinned: {
+  color: '#00caff',
+  marginTop: 4,
+  fontSize: 13,
+  fontStyle: 'italic',
+  textAlign: 'center',
+},
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -527,6 +999,81 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  replyPreview: {
+  backgroundColor: '#2a2a2a',
+  padding: 8,
+  marginBottom: 6,
+  borderLeftWidth: 4,
+  borderLeftColor: '#00caff',
+  borderRadius: 6,
+},
+
+replyText: {
+  color: '#ccc',
+  fontSize: 13,
+},
+
+pinnedContainer: {
+  backgroundColor: '#333',
+  paddingVertical: 10,
+  paddingHorizontal: 12,
+  marginBottom: 8,
+},
+
+pinnedHeader: {
+  color: '#ffeb3b',
+  fontWeight: 'bold',
+  marginBottom: 4,
+},
+
+
+pinnedText: {
+  color: '#fff',
+  fontSize: 13,
+},
+
+togglePinned: {
+  color: '#00caff',
+  marginTop: 4,
+  fontSize: 13,
+  fontStyle: 'italic',
+},
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionModal: {
+    backgroundColor: '#213448',
+    borderRadius: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    width: 240,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+
+  modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.3)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+actionButton: {
+  borderBottomColor: '#555',
+  borderBottomWidth: 1,
+},
+
+actionText: {
+  color: '#fff',
+  fontSize: 16,
+  textAlign: 'center',
+},
+
   
   avatarHeader: {
     width: 40,
@@ -601,15 +1148,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     height: 63,             // Chiều cao của thanh nhập liệu
   },
+
+    notificationContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  notificationText: {
+    backgroundColor: 'rgba(200, 200, 200, 0.3)',
+    color: '#fff',
+    fontSize: 12,
+    fontStyle: 'italic',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    maxWidth: '70%',
+    textAlign: 'center',
+  },
   input: {
     flex: 1,                // Chiếm toàn bộ không gian còn lại
     color: '#fff',          // Màu chữ của input
     fontSize: 16,           // Kích thước font
     paddingVertical: 6,     // Padding dọc cho input
     paddingHorizontal: 12,  // Padding ngang cho input
-    backgroundColor: '#1a1a1a', // Màu nền input
+    backgroundColor: 'gray', // Màu nền input
     borderRadius: 20,       // Góc bo tròn của input
     height: 40,             // Chiều cao của input (có thể điều chỉnh để vừa với inputBar)
+    width:15,
   },
   icon: {
     marginHorizontal: 5,    // Giãn cách giữa các icon

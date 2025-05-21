@@ -6,7 +6,8 @@ import { useNavigation } from '@react-navigation/native';
 import axios from "axios";
 import { io } from "socket.io-client"; // Import socket.io-client
 
-const socket = io("http://192.168.1.43:5000"); // Kết nối với server socket
+//const socket = io("http://192.168.1.110:5000"); // Kết nối với server socket
+const socket = io('https://cnm-service.onrender.com'); // Kết nối với server socket
 
 const FriendRequestScreen = () => {
   const { user } = useSelector((state) => state.user);
@@ -54,14 +55,14 @@ const FriendRequestScreen = () => {
         setSentRequests((prevRequests) => prevRequests.filter(req => req.userID !== data.recipientID)); // Xóa yêu cầu đã chấp nhận
       }
     });
-    socket.on("friend_request_rejected", (data) => {
+    socket.on("friend_request_recipientID", (data) => {
       if (data.status === "rejected") {
         console.log("Yêu cầu kết bạn đã bị từ chối:", data);
         setReceivedRequests((prevRequests) => prevRequests.filter(req => req.contactID !== data.userID)); // Xóa yêu cầu đã từ chối
         
       }
     });
-    socket.on("friend_request_rejected", (data) => {
+    socket.on("friend_request_senderID", (data) => {
       if (data.status === "rejected") {
         console.log("Yêu cầu kết bạn đã bị từ chối:", data);
         setSentRequests((prevRequests) => prevRequests.filter(req => req.userID !== data.recipientID)); // Xóa yêu cầu đã từ chối
@@ -81,11 +82,13 @@ const FriendRequestScreen = () => {
       socket.off("friend_request_accepted");
       socket.off("friend_request_accepted");
       socket.off('friend_request_sent');
-      socket.off("friend_request_rejected");
-      socket.off("friend_request_rejected");
+      socket.off("friend_request_recipientID");
+      socket.off("friend_request_senderID");
       socket.off("error");
     };
   }, [user]); // Khi user thay đổi, gọi lại yêu cầu lấy yêu cầu kết bạn
+
+console.log("Danh sách yêu cầu kết bạn:", receivedRequests);
 
   const handleAccept = async (item) => {
         console.log("Chấp nhận yêu cầu kết bạn:", item.contactID);
@@ -167,7 +170,7 @@ const FriendRequestScreen = () => {
       {activeTab === 'received' && (
         <FlatList
           data={receivedRequests}
-          keyExtractor={(item) => item.contactID}
+          keyExtractor={(item) => item.phoneNumber}
           renderItem={(props) => renderItem({ ...props, type: 'received' })}
           ListEmptyComponent={<Text style={styles.empty}>Không có lời mời nào</Text>}
         />

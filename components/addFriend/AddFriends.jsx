@@ -2,7 +2,7 @@ import React, { useState,useEffect } from 'react';
 import { Modal, TouchableOpacity, FlatList, Text, View, Image, TextInput, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { io } from 'socket.io-client';
-const socket = io("http://192.168.186.55:5000");
+const socket = io("http://192.168.86.55:5000");
 
 const AddFriends = ({ friends, closeModalAdd,user ,chatID}) => {
   const [selectedFriends, setSelectedFriends] = useState([]);
@@ -22,6 +22,25 @@ const AddFriends = ({ friends, closeModalAdd,user ,chatID}) => {
       }
     });
   };
+  const sendNotification = (content) => {
+  if (!content.trim()) return;
+
+  const tempID = Date.now().toString();
+
+  const newNotification = {
+    tempID,
+    chatID:chatID,
+    senderID: user.userID,
+    content,
+    type: "notification",
+    timestamp: new Date().toISOString(),
+    media_url: [],
+    status: "sent",
+    pinnedInfo: null,
+    senderInfo: { name: user.name, avatar: user.anhDaiDien },
+  };
+  socket.emit("send_message", newNotification);
+};
 
   const handleAddMembers = () => {
     if (selectedFriends.length === 0) {
@@ -39,6 +58,7 @@ const AddFriends = ({ friends, closeModalAdd,user ,chatID}) => {
      members: members
     };
     socket.emit('AddMember',data);
+    sendNotification(`${user.name} đã thêm ${selectedFriends[0].name} vào nhóm`);
     closeModalAdd(); // Đóng modal sau khi thêm thành viên
   };
 

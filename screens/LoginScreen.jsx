@@ -11,7 +11,8 @@ import { CommonActions } from '@react-navigation/native';
 import axios from "axios";
 import { io } from "socket.io-client";
 
-const socket = io("http://192.168.1.24:5000");
+//const socket = io("http://192.168.86.55:5000");
+const socket = io('https://cnm-service.onrender.com'); // Kết nối với server socket
 const LoginScreen = ({route}) => {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState("");

@@ -7,8 +7,8 @@ import { io } from 'socket.io-client';
 import SearchBar from '../screens/SearchBar'; // Assuming you have a SearchBar component
 
 
-//const socket = io('https://cnm-service.onrender.com');
-const socket = io("http://192.168.1.24:5000"); // Kết nối với server socket
+const socket = io('https://cnm-service.onrender.com');
+//const socket = io("http://192.168.1.110:5000"); // Kết nối với server socket
 
 const FilterBar = () => (
   <View style={styles.filterBar}>
@@ -26,7 +26,10 @@ const ContactsScreen = () => {
   const navigation = useNavigation();
   const [friendsList, setFriendsList] = useState([]);
   const [receivedRequests, setReceivedRequests] = useState([]);
- // const [length, setLength] = useState(receivedRequests.length);
+  const [length, setLength] = useState(0);
+  useEffect(() => {
+    setLength(receivedRequests.length); // Cập nhật số lượng yêu cầu kết bạn
+  },[receivedRequests])
 
   useEffect(() => {
       if (socket && user?.userID) {
@@ -48,9 +51,10 @@ const ContactsScreen = () => {
             setReceivedRequests((prevRequests) => prevRequests.filter(req => req.contactID !== data.userID)); // Xóa yêu cầu đã chấp nhận
           }
         });
-        socket.on("friend_request_rejected", (data) => {
+        socket.on("friend_request_recipientID", (data) => {
           if (data.status === "rejected") {
             console.log("Yêu cầu kết bạn đã bị từ chối:", data);
+            setLength(receivedRequests.length); // Cập nhật số lượng yêu cầu kết bạn
             setReceivedRequests((prevRequests) => prevRequests.filter(req => req.contactID !== data.userID)); // Xóa yêu cầu đã từ chối
           }
         });
@@ -61,14 +65,14 @@ const ContactsScreen = () => {
       socket.off("pending_friend_requests");
       socket.off("new_friend_request");
       socket.off("friend_request_accepted");
-      socket.off("friend_request_rejected");
+      socket.off("friend_request_recipientID");
     };
     }, [user?.userID]);
     const getFriendsList = async () => {
       try {
         console.log("🔄 Fetching friends list with userID:", user?.userID);
     
-        const response = await fetch("https://echoapp-rho.vercel.app/api/ContacsFriendByUserID", {
+        const response = await fetch("https://cnm-service.onrender.com/api/ContacsFriendByUserID", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -95,7 +99,7 @@ const ContactsScreen = () => {
   }, [user]);
   const fetchatListChatFriend = async (friend) => {
     try {
-      const response = await fetch("https://echoapp-rho.vercel.app/api/chats1-1ByUserID", {
+      const response = await fetch("https://cnm-service.onrender.com/api/chats1-1ByUserID", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,7 +118,7 @@ const ContactsScreen = () => {
         navigation.navigate('ChatScreen', { item: chat });
       } else {
         // Nếu chưa có, tạo chat mới
-        const createResponse = await fetch("http://192.168.1.24:5000/api/createChat1-1", {
+        const createResponse = await fetch("https://cnm-service.onrender.com/api/createChat1-1", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -175,7 +179,7 @@ const ContactsScreen = () => {
         onPress={() => navigation.navigate('FriendRequestScreen',{user:user})}
         style={styles.friendRequestRow}
       >
-        <Text style={styles.sectionText}>Lời mời kết bạn {receivedRequests.length}</Text>
+        <Text style={styles.sectionText}>Lời mời kết bạn {length}</Text>
         <Icon name="chevron-forward" size={20} color="#fff" />
       </TouchableOpacity>
 
