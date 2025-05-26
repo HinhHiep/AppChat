@@ -166,6 +166,21 @@ export const checkSDT = async (sdt) =>{
   });
   return responseEmail; // Trả về dữ liệu từ phản hồi
 }
+export const checkAccount = async (email, sdt) => {
+  try {
+     const responseEmail = await axios.post('https://cnm-service.onrender.com/api/users/checksdt', 
+    { email,sdt },
+    { headers: { 'Content-Type': 'application/json' } }
+  ).catch(err => {
+    throw new Error(`Lỗi kiểm tra email: ${err.message}`);
+  });
+  return responseEmail; // Trả về dữ liệu từ phản hồi
+  } catch (error) {
+    console.error("Error during checkAccount:", error);
+    throw error;
+    
+  }
+};
 
 export const getChatsForUser = async (userID) => {
   try {

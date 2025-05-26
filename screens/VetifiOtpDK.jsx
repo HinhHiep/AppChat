@@ -5,10 +5,18 @@ import InputDefault from '@/components/input/InputDefault'
 import ButtonPrimary from '@/components/button/ButtonPrimary'
 import { useNavigation } from '@react-navigation/native'
 import { CommonActions } from '@react-navigation/native'
-
+import {getOTP} from '@/api/UserApi';
 const VetifiOtpDK = ({route}) => {
   const navigation = useNavigation()
   const {email,sdt, data} = route.params;
+  const [timer, setTimer] = useState(60);
+  
+    useEffect(() => {
+      if (timer > 0) {
+        const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
+        return () => clearInterval(interval);
+      }
+    }, [timer]);
 
   const [enabled,setEnabled] = useState(false)
   useEffect(() => {
@@ -16,6 +24,7 @@ const VetifiOtpDK = ({route}) => {
     console.log('Data:', data);    // In ra data
   }, [email,sdt, data]);
   const [OTP, setOTP] = useState('')
+  const [isOTPValid, setIsOTPValid] = useState(data?.otp || ""); // Giả sử data.otp là OTP đã gửi
 
   const handleLogin = () => {
     navigation.navigate('Login')
@@ -25,7 +34,7 @@ const VetifiOtpDK = ({route}) => {
       alert('Vui lòng nhập OTP !')
       return
     }
-    if (OTP !== data.otp) {
+    if (OTP !== isOTPValid) {
       alert('OTP không đúng !')
       return
     }
@@ -49,7 +58,15 @@ const VetifiOtpDK = ({route}) => {
           }
     
       }, [OTP]);
-  
+   const handleResend = async () => {
+      if (timer === 0) {
+        setTimer(60);
+        // Gửi lại OTP tại đây
+       const data = await getOTP(email);
+       setIsOTPValid(data.otp); // Cập nhật OTP mới
+       alert("OTP resent!");
+      }
+    };
   return (
    <LayoutDefault>
        <InputDefault 
@@ -62,6 +79,17 @@ const VetifiOtpDK = ({route}) => {
          keyboardTypeNumeric
       />
        <ButtonPrimary title="Tiếp tục" onPress={()=> handleSignUp()} enabled={enabled} />
+        <View style={styles.resendContainer}>
+                      {timer > 0 ? (
+                        <Text style={styles.timerText}>
+                          Resend OTP in {timer}s
+                        </Text>
+                      ) : (
+                        <TouchableOpacity onPress={handleResend}>
+                          <Text style={styles.resendText}>Resend OTP</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
        <View style={{ flexDirection: "row", justifyContent: "center" }}>
                <Text style={styles.textBody}>Bạn đã có tài khoản ? </Text>
                <TouchableOpacity onPress={() => handleLogin()}>
@@ -84,5 +112,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 10,
     fontSize: 16,
+  },
+  resendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  timerText: {
+    color: "#230C02",
+    fontSize: 14,
+  },
+  resendText: {
+    color: "#834D1E",
+    fontSize: 14,
+    fontWeight: "bold",
+    textDecorationLine: "underline",
   },
 })

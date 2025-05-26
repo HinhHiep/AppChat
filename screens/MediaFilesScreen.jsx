@@ -8,6 +8,7 @@ import {
   Image,
   SafeAreaView,
   Platform,
+  Linking
 } from 'react-native';
 import VideoRN from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -48,7 +49,10 @@ const MediaFilesScreen = () => {
   const navigation = useNavigation();
 
   const { chat } = route.params || {};
-
+const openGoogleDocs = (fileUrl) => {
+  const googleDocsUrl = `https://docs.google.com/viewer?url=${fileUrl}&embedded=true`;
+  Linking.openURL(googleDocsUrl);
+};
   // Sắp xếp tin nhắn giảm dần theo timestamp (mới nhất lên đầu)
   const messages = (chat?.lastMessage || [])
     .slice()
@@ -118,7 +122,9 @@ const MediaFilesScreen = () => {
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <View style={styles.fileItem}>
-              <Text style={styles.fileName}>{item.name}</Text>
+              <TouchableOpacity onPress={() => openGoogleDocs(item.uri)}>
+                <Text style={styles.fileName}>{item.name}</Text>
+              </TouchableOpacity>
             </View>
           )}
           contentContainerStyle={{ paddingBottom: 20 }}

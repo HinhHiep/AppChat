@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, TextInput ,StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard ,Modal} from 'react-native';
+import { View, Text, Image, TextInput ,StyleSheet, TouchableOpacity, ScrollView, Alert, Keyboard ,Modal,Linking} from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from "expo-image-picker";
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -10,7 +10,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import InputDefault from '@/components/input/InputDefault';
 import { io } from 'socket.io-client';
-import EmojiSelector from 'react-native-emoji-selector';
 import axios from "axios";
 import { setUser } from "@/redux/slices/UserSlice";
 import { useDispatch } from "react-redux";
@@ -31,6 +30,7 @@ const ChatScreen = () => {
   const [selected, setSelected] = useState([]);
   const [showGallery, setShowGallery] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiObject, setEmojiObject] = useState(null);
   const [videos, setVideos] = useState([]);
   const [Video_Image,setVideo_Image] = useState(null);
   const [visibleCount, setVisibleCount] = useState(10);
@@ -47,12 +47,14 @@ const [showActionModal, setShowActionModal] = useState(false); // Hiển thị m
 const [replyMessage, setReplyMessage] = useState(null);   // Tin nhắn được trả lời
 const [pinnedMessages, setPinnedMessages] = useState([]); // Mảng tin nhắn ghim
 const [showAllPinned, setShowAllPinned] = useState(false); // để toggle xem nhiều/ẩn bớt
+ const [tranLate, setTransLate] = useState(false); // State cho chức năng dịch
+  const [Recommend, setRecommend] = useState(false); // State cho chức năng gợi ý trả lời
+  const [messagesToTranslate, setMessagesToTranslate] = useState(null); // Tin nhắn cần dịch
+  const [MessTranLate, setMessTranLate] = useState(null); // Danh sách tin nhắn đã dịch
+
+  
 
 
-
-
-
- 
   const handleMember = async(memberID)=>{
     try{
         const res = await axios.post("https://cnm-service.onrender.com/api/usersID", {
@@ -121,13 +123,57 @@ const handleOptionGroup = () => {
   }
 };
 
-  const handleEmojiSelect = (emojiObject) => {
-    // Lấy emoji từ emojiObject
-    const emoji = emojiObject.native;
-    
-    setMessage((prevMessage) => prevMessage + emoji);  // Thêm emoji vào tin nhắn
-    setShowEmojiPicker(false);  // Đóng emoji picker sau khi chọn
-  };
+   const handleEmojiSelect = (emoji) => {
+    if (!emoji) return;
+    const tempID = Date.now().toString();
+    const newMsg = {
+  tempID,
+  chatID: item.chatID,
+  senderID: user.userID,
+  content: emoji.native,
+  type: 'emoji',
+  timestamp: new Date().toISOString(),
+  media_url: [],
+  status: 'sent',
+  senderInfo: { name: user.name, avatar: user.anhDaiDien },
+};
+
+    socket.emit('send_message', newMsg);
+    setMessage((prev) => [...prev, newMsg]);
+    setEmojiObject(null);
+    setShowEmojiPicker(false);
+   };
+
+   const handleEmojiSelectt = (emoji) => {
+    if (!emoji) return;
+    const tempID = Date.now().toString();
+    const newMsg = {
+  tempID,
+  chatID: item.chatID,
+  senderID: user.userID,
+  content: emoji.native,
+  type: 'emoji',
+  timestamp: new Date().toISOString(),
+  media_url: [],
+  status: 'sent',
+  senderInfo: { name: user.name, avatar: user.anhDaiDien },
+...(replyMessage && {
+  replyTo: {
+    messageID: replyMessage.messageID || replyMessage._id,
+    senderID: replyMessage.senderID,
+    content: replyMessage.content,
+    type: replyMessage.type,
+    media_url: replyMessage.media_url || [],
+    senderInfo: replyMessage.senderInfo, // ✅ Bắt buộc phải có
+  }
+}),
+};
+    socket.emit('send_message', newMsg);
+    setMessage((prev) => [...prev, newMsg]);
+    setEmojiObject(null);
+    setShowEmojiPicker(false);
+     setReplyMessage(null);
+   };
 
   const handleScroll = (event) => {
     const yOffset = event.nativeEvent.contentOffset.y;
@@ -138,24 +184,6 @@ const handleOptionGroup = () => {
   const sortedMessages = [...message].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   const visibleMessages = sortedMessages.slice(-visibleCount); // lấy 10 tin nhắn mới nhất
 
-
-  // const pickVideo = async () => {
-  //   const result = await ImagePicker.launchImageLibraryAsync({
-  //     mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-  //     allowsEditing: false,
-  //     quality: 1,
-  //   });
-  
-  //   if (!result.canceled) {
-  //     //console.log("Video URI:", result.assets);
-  //     //const video = result.assets[0];
-  //     setVideos(result.assets);
-  //     console.log("Video URI:",result.assets);
-      
-
-  //     // Gửi video này về server
-  //   }
-  // };
   const sendSelectedVideos = async () => {
     if (!videos.length) return;
     const formData = new FormData();
@@ -631,6 +659,75 @@ useEffect(() => {
   setPinnedMessages(pinned);
 }, [message]);
 
+const openGoogleDocs = (fileUrl) => {
+  const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  Linking.openURL(googleDocsUrl);
+};
+ const handlecloseTransLate = () => {
+     setTransLate(false);
+    setMessagesToTranslate(null);
+    setMessTranLate(null);
+  };
+  const handlecloseRecommend = () => {
+    setRecommend(false);
+    setMessagesToTranslate(null);
+    setMessTranLate(null);
+  };
+
+  const handleTransLate = async (message) => {
+  const  st = 'Translate the following message to Vietnamese: ' + message.content;
+  const translatedMessage = await getCohereResponse(st);
+  setTimeout(() => {
+  setTransLate(true);
+  setMessagesToTranslate(message);
+  setShowActionModal(false);
+  setMessTranLate(translatedMessage);
+}, 2000);
+}
+
+const handleRecommendAnswer = async (message) => {
+  const  st = 'Suggest multiple responses to the following message in Vietnamese: ' + message.content;
+  const translatedMessage = await getCohereResponse(st);
+  setTimeout(() => {
+    setRecommend(true);
+    setShowActionModal(false);
+    setMessagesToTranslate(message);
+    setMessTranLate(translatedMessage);
+  }, 2000);
+}
+
+ const getCohereResponse = async (message) => {
+   // const API_KEY = "3LRgcGf1oXepT31AcVdu0a9L1uQnW8jAaqh8WjSP";
+   const API_KEY="tPbb7S45X5nomcSvNZXEYVGXPpu7axNagROhUb2k";
+    const endpoint = "https://api.cohere.ai/v1/chat";
+    
+
+    try {
+      const response = await axios.post(
+        endpoint,
+        {
+          model: "command-r-plus",
+          message: message,
+          temperature: 0.3,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const botResponse = response.data.text;
+      return botResponse;
+    } catch (error) {
+      console.error(
+        "Error in Cohere API:",
+        error.response?.data || error.message
+      );
+      return "Sorry, I couldn't process that right now.";
+    }
+  };
+
 
 
 return (
@@ -647,65 +744,87 @@ return (
     onPressOut={() => setShowActionModal(false)}
   >
     <View style={styles.actionModal}>
+      {/* Trả lời */}
+      <TouchableOpacity
+        style={styles.actionButtonn}
+        onPress={() => {
+          if (selectedMessage) {
+            setReplyMessage({
+              ...selectedMessage,
+              senderInfo: selectedMessage.senderInfo || {
+                name:
+                  item.type === 'private'
+                    ? member?.name
+                    : item.members.find((m) => m.userID === selectedMessage.senderID)?.name ||
+                      'Người dùng',
+                avatar:
+                  item.type === 'private'
+                    ? member?.anhDaiDien
+                    : item.members.find((m) => m.userID === selectedMessage.senderID)?.avatar || '',
+              },
+            });
+          }
+          setShowActionModal(false);
+        }}
+      >
+        <FAIcon name="reply" size={20} color="#00caff" style={styles.actionIcon} />
+        <Text style={styles.actionText}>Trả lời</Text>
+      </TouchableOpacity>
 
-<TouchableOpacity
-  style={styles.actionButton}
-onPress={() => {
-  if (selectedMessage) {
-    setReplyMessage({
-      ...selectedMessage,
-      senderInfo: selectedMessage.senderInfo || {
-        name: item.type === "private"
-          ? member?.name
-          : item.members.find((m) => m.userID === selectedMessage.senderID)?.name || "Người dùng",
-        avatar: item.type === "private"
-          ? member?.anhDaiDien
-          : item.members.find((m) => m.userID === selectedMessage.senderID)?.avatar || ""
-      }
-    });
-  }
-  setShowActionModal(false);
-}}
+      {/* Ghim */}
+      <TouchableOpacity
+        style={styles.actionButtonn}
+        onPress={() => {
+          if (!selectedMessage) return;
+          const id = selectedMessage.messageID || selectedMessage._id;
+          if (pinnedMessages.some((msg) => msg.messageID === id)) {
+            Alert.alert('Thông báo', 'Tin nhắn đã được ghim rồi!');
+            return;
+          } else {
+            handleGhimMessage(selectedMessage);
+          }
+        }}
+      >
+        <FAIcon name="thumb-tack" size={20} color="#ffaa00" style={styles.actionIcon} />
+        <Text style={styles.actionText}>Ghim tin nhắn</Text>
+      </TouchableOpacity>
 
->
-  <FAIcon name="reply" size={20} color="#00caff" style={styles.actionIcon} />
-  <Text style={styles.actionText}>Trả lời</Text>
-</TouchableOpacity>
-
-
-
-
-<TouchableOpacity
-  style={styles.actionButton}
-  onPress={() => {
-    if (!selectedMessage) return;
-    const id = selectedMessage.messageID || selectedMessage._id;
-    if(pinnedMessages.some((msg) => msg.messageID === id)){
-      Alert.alert("Thông báo", "Tin nhắn đã được ghim rồi!");
-      return;
-    }else{
-      handleGhimMessage(selectedMessage); 
-    }
-  }}
->
-  <FAIcon name="thumb-tack" size={20} color="#ffaa00" style={styles.actionIcon} />
-  <Text style={styles.actionText}>Ghim tin nhắn</Text>
-</TouchableOpacity>
-
-
-      {selectedMessage?.senderID === user.userID && selectedMessage.type !== 'unsend'  && (
+      {/* Thu hồi */}
+      {selectedMessage?.senderID === user.userID && selectedMessage.type !== 'unsend' && (
         <TouchableOpacity
-          style={styles.actionButton}
-          onPress={()=>handleLongPress(selectedMessage)}
+          style={styles.actionButtonn}
+          onPress={() => handleLongPress(selectedMessage)}
         >
           <FAIcon name="undo" size={20} color="#ff4444" style={styles.actionIcon} />
-          <Text style={[styles.actionText]}>Thu hồi tin nhắn</Text>
+          <Text style={styles.actionText}>Thu hồi tin nhắn</Text>
         </TouchableOpacity>
       )}
 
+      {/* Dịch */}
+      {selectedMessage?.type === 'text' && (
+        <TouchableOpacity
+          style={styles.actionButtonn}
+          onPress={() => handleTransLate(selectedMessage)}
+        >
+          <FAIcon name="language" size={20} color="#00caff" style={styles.actionIcon} />
+          <Text style={styles.actionText}>Dịch tin nhắn</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* recommend */}
+      {selectedMessage?.type === 'text' && (
+        <TouchableOpacity
+          style={styles.actionButtonn}
+          onPress={() => handleRecommendAnswer(selectedMessage)}
+        >
+         <FAIcon name="lightbulb-o" size={20} color="#fff"  style={styles.actionIcon} />
+          <Text style={styles.actionText}>Gợi ý trả lời</Text>
+        </TouchableOpacity>
+      )}
     </View>
   </TouchableOpacity>
 </Modal>
+
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       
       <View style={styles.header}>
@@ -748,7 +867,8 @@ onPress={() => {
             msg.type === 'image' ? (<Text>Image</Text>) :
             msg.type === 'video' ? (<Text>Video</Text>) :
             msg.type === 'audio' ? (<Text>Audio</Text>) :
-            msg.type === 'doc' ? (<Text>Document</Text>) :
+            msg.type === 'file' ? (<Text>Document</Text>) :
+            msg.type === 'emoji' ? (<Text>Emoji</Text>) :
           msg.content.slice(0, 80)}
         </Text>
         <TouchableOpacity onPress={() => unpinMessage(msg)}>
@@ -793,56 +913,81 @@ onPress={() => {
     setShowActionModal(true);
   }}
 >
-      <View style={isMine ? styles.myMessageContainer : styles.otherMessageContainer}>
-        {!isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
-        <View style={isMine ? styles.myMessage : styles.otherMessage}>
-          {msg.replyTo && (
-  <View style={{ backgroundColor: '#444', padding: 6, borderRadius: 6, marginBottom: 4,
-    justifyContent:"space-between",
-  }}>
-    <Text style={{ fontSize: 12, color: '#ccc' }}>
-      Trả lời {msg.replyTo.senderID === user.userID ? 'Bạn' : msg.replyTo.senderInfo?.name || 'ai đó'}: {
-      msg.replyTo.type === 'text' ? msg.replyTo.content:
-      msg.replyTo.type === 'image' ? <Text>Image</Text> :
-      msg.replyTo.type === 'video' ? <Text>Video</Text> :
-      msg.replyTo.type === 'audio' ? <Text>Audio</Text> :
-      msg.replyTo.type === 'doc' ? <Text>Document</Text> :
-      null}
-    </Text>
-  </View>
-)}
+    <View style={isMine ? styles.myMessageContainer : styles.otherMessageContainer}>
+  {/* Avatar bên trái nếu là tin nhắn người khác */}
+  {!isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
 
-          {msg.type === 'video' && Array.isArray(msg.media_url) ? (
-            msg.media_url.map((vid, i) => (
-              <Video
-                key={i}
-                source={{ uri: vid }}
-                controls
-                resizeMode="contain"
-                paused={false}
-                style={{ width: 200, height: 150 }}
-              />
-            ))
-          ) : msg.type === 'unsend' ? (
-            <Text style={{ fontStyle: 'italic', color: 'gray' }}>Tin nhắn đã được thu hồi</Text>
-          ) : msg.type === 'image' ? (
-            msg.media_url.map((img, i) => (
-              <TouchableOpacity
-                key={i}
-                onPress={() => navigation.navigate('FullImageScreen', { uri: typeof img === 'string' ? img : img.uri })}
-              >
-                <Image key={i} source={{ uri: img }} style={styles.chatImage} />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <Text style={{ color: isMine ? '#eaeaea' : '#fff' }}>{msg.content}</Text>
-          )}
-          {isMine && msg.type !== 'unsend' && (
-            <Text style={styles.statusText}>{msg.status === 'read' ? 'Đã xem' : 'Đã gửi'}</Text>
-          )}
+  <View style={{ flexDirection: 'column', maxWidth: '80%' }}>
+    {/* 🔹 Luôn hiển thị tên người gửi */}
+    {msg.senderInfo?.name && (
+      <Text style={{ color: '#999', fontSize: 12, marginLeft: 4, marginBottom: 2 }}>
+        {msg.senderInfo.name}
+      </Text>
+    )}
+
+    {/* Hộp chứa nội dung tin nhắn */}
+    <View style={isMine ? styles.myMessage : styles.otherMessage}>
+      {/* Nếu là tin nhắn trả lời */}
+      {msg.replyTo && (
+        <View style={{ backgroundColor: '#444', padding: 6, borderRadius: 6, marginBottom: 4 }}>
+          <Text style={{ fontSize: 12, color: '#ccc' }}>
+            Trả lời {msg.replyTo.senderID === user.userID ? 'Bạn' : msg.replyTo.senderInfo?.name || 'ai đó'}:{" "}
+            {msg.replyTo.type === 'text' ? msg.replyTo.content :
+              msg.replyTo.type === 'image' ? '[Image]' :
+              msg.replyTo.type === 'video' ? '[Video]' :
+              msg.replyTo.type === 'audio' ? '[Audio]' :
+              msg.replyTo.type === 'file' ? '[File]' :
+              msg.replyTo.type === 'emoji' ? '[Emoji]' :
+              '[Unknown]'
+            }
+          </Text>
         </View>
-        {isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
-      </View>
+      )}
+
+      {/* Hiển thị nội dung tin nhắn */}
+      {msg.type === 'video' && Array.isArray(msg.media_url) ? (
+        msg.media_url.map((vid, i) => (
+          <Video
+            key={i}
+            source={{ uri: vid }}
+            controls
+            resizeMode="contain"
+            paused={false}
+            style={{ width: 200, height: 150 }}
+          />
+        ))
+      ) : msg.type === 'unsend' ? (
+        <Text style={{ fontStyle: 'italic', color: 'gray' }}>Tin nhắn đã được thu hồi</Text>
+      ) : msg.type === 'file' ? (
+        <TouchableOpacity onPress={() => openGoogleDocs(msg.media_url)}>
+          <Text style={{ color: '#00caff' }}>{msg.content}</Text>
+        </TouchableOpacity>
+      ) : msg.type === 'image' ? (
+        msg.media_url.map((img, i) => (
+          <TouchableOpacity
+            key={i}
+            onPress={() =>
+              navigation.navigate('FullImageScreen', { uri: typeof img === 'string' ? img : img.uri })
+            }
+          >
+            <Image source={{ uri: img }} style={styles.chatImage} />
+          </TouchableOpacity>
+        ))
+      ) : (
+        <Text style={{ color: isMine ? '#eaeaea' : '#fff' }}>{msg.content}</Text>
+      )}
+
+      {/* Trạng thái "Đã xem" hoặc "Đã gửi" (chỉ hiện với tin của mình) */}
+      {isMine && msg.type !== 'unsend' && (
+        <Text style={styles.statusText}>{msg.status === 'read' ? 'Đã xem' : 'Đã gửi'}</Text>
+      )}
+    </View>
+  </View>
+
+  {/* Avatar bên phải nếu là tin nhắn của mình */}
+  {isMine && <Image source={{ uri: msg.senderInfo?.avatar }} style={styles.avatarSmall} />}
+</View>
+
     </TouchableOpacity>
   );
 })}
@@ -870,27 +1015,122 @@ onPress={() => {
           })}
         </ScrollView>
       )}
- {/* {showEmojiPicker && (<Picker onEmojiSelect={handleEmojiSelect} />)} */}
-      { showEmojiPicker && (<EmojiBoard onSelect={(emoji) => setEmoji(emoji)} />)}
+      { showEmojiPicker && (
+    <Picker
+      onSelect={(emoji )=>{if(replyMessage){
+        handleEmojiSelectt(emoji);
 
+      } else { handleEmojiSelect(emoji); }
+      }}
+      theme="light" // hoặc "dark"
+    />
+   )}
         {replyMessage && (
-  <View style={{ backgroundColor: '#222', padding: 15 , justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' }}>
-      <Text style={{ color: 'white', fontSize: 15, fontWeight: 'bold' }}>
+  <View style={{
+      backgroundColor: '#222',
+      padding: 15,
+      justifyContent: 'space-between',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+    }}>
+     <View style={{ flex: 1, paddingRight: 10 }}>
+      <Text
+        style={{
+          color: 'white',
+          fontSize: 15,
+          fontWeight: 'bold',
+          flexShrink: 1,
+          flexWrap: 'wrap',
+        }}
+      >
     {replyMessage.senderID === user.userID ? 'Bạn' : (replyMessage.senderInfo?.name || 'ai đó')}: {replyMessage.content}
       </Text>
+    </View>
 
     <TouchableOpacity onPress={() => setReplyMessage(null)}>
-      <Text style={{ color: 'white', fontWeight:'bold', fontSize:15}}>❌ Hủy</Text>
+     <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>❌ Hủy</Text>
     </TouchableOpacity>
   </View>
 )}
 
+ {tranLate && (
+  <View
+    style={{
+      backgroundColor: '#222',
+      padding: 15,
+      justifyContent: 'space-between',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+    }}
+  >
+    <View style={{ flex: 1, paddingRight: 10 }}>
+      <Text
+        style={{
+          color: 'white',
+          fontSize: 15,
+          fontWeight: 'bold',
+          flexShrink: 1,
+          flexWrap: 'wrap',
+        }}
+      >
+       Dịch câu của : {messagesToTranslate.senderID === user.userID
+          ? 'Bạn'
+          : messagesToTranslate.senderInfo?.name || 'ai đó'}
+        : {MessTranLate}
+      </Text>
+    </View>
+
+    <TouchableOpacity onPress={handlecloseTransLate}>
+      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>❌ Hủy</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+{Recommend && (
+  <View
+    style={{
+      backgroundColor: '#222',
+      padding: 15,
+      justifyContent: 'space-between',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+    }}
+  >
+    
+      <View style={{ flex: 1, paddingRight: 10 }}>
+        <Text
+          style={{
+            color: 'white',
+            fontSize: 15,
+            fontWeight: 'bold',
+            flexShrink: 1,
+            flexWrap: 'wrap',
+          }}
+      >
+     Gợi ý câu trả lời của: {messagesToTranslate.senderID === user.userID
+          ? 'Bạn'
+          : messagesToTranslate.senderInfo?.name || 'ai đó'}
+        : {MessTranLate}
+    </Text>
+  </View>
+
+  <TouchableOpacity onPress={handlecloseRecommend}>
+    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>❌ Hủy</Text>
+  </TouchableOpacity>
+</View>
+)}
+
+
 
 <View style={styles.inputBar}>
 
-    <TouchableOpacity onPress={() => setShowEmojiPicker(true)}>
+    <TouchableOpacity onPress={() => setShowEmojiPicker(prev => !prev)}>
       <Icon name="happy-outline" size={22} color="#ffaa00" style={styles.icon} />
     </TouchableOpacity>
+   
 
 <TextInput
   placeholder="Tin nhắn"
@@ -1038,43 +1278,31 @@ togglePinned: {
   fontSize: 13,
   fontStyle: 'italic',
 },
-  modalOverlay: {
+   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionModal: {
-    backgroundColor: '#213448',
-    borderRadius: 12,
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    width: 240,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
+    backgroundColor: '#222',
+    borderRadius: 10,
+    paddingVertical: 10,
+    width: 260,
   },
-
-  modalOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.3)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-
-actionButton: {
-  borderBottomColor: '#555',
-  borderBottomWidth: 1,
-},
-
-actionText: {
-  color: '#fff',
-  fontSize: 16,
-  textAlign: 'center',
-},
-
-  
+  actionButtonn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+  },
+  actionIcon: {
+    marginRight: 12,
+  },
+  actionText: {
+    fontSize: 16,
+    color: '#fff',
+  },
   avatarHeader: {
     width: 40,
     height: 40,

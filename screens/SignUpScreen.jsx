@@ -22,7 +22,6 @@ const SignUpScreen = () => {
     }
 
     if (
-      !(await checkGmail(email)).data.exists &&
       !(await checkSDT(sdt)).data.exists
     ) {
       
@@ -34,7 +33,7 @@ const SignUpScreen = () => {
         data: data,
       });
     } else {
-      alert("Email hoặc Số điện thoại đã tồn tại !");
+      alert("Số điện thoại đã tồn tại !");
       return;
     }
   };

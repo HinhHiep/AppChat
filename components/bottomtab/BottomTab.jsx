@@ -19,7 +19,6 @@ const BottomTab = () =>{
             let iconName;
             if (route.name === 'Tin Nhắn') iconName = 'chat-bubble';
             else if (route.name === 'Danh bạ') iconName = 'contacts';
-            else if (route.name === 'Nhật ký') iconName = 'history';
             else if (route.name === 'Cá nhân') iconName = 'person';
             return <Icon name={iconName} size={24} color={color} />;
           },
@@ -48,7 +47,6 @@ const BottomTab = () =>{
       >
         <Tab.Screen name="Tin Nhắn" component={MessageScreen} />
         <Tab.Screen name="Danh bạ" component={ContacsScreen} />
-        <Tab.Screen name="Nhật ký" component={DiaryScreen} />
         <Tab.Screen name="Cá nhân" component={IndividualScreen} />
       </Tab.Navigator>
   );
